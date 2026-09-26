@@ -128,6 +128,8 @@ As dependências têm as versões fixadas em `requirements.txt` para garantir um
    .venv\Scripts\Activate.ps1
    ```
 
+   Se o PowerShell bloquear a execução do script de ativação (política padrão em algumas máquinas), execute `Set-ExecutionPolicy -Scope Process RemoteSigned` antes de ativar, ou use o prompt do cmd: `.venv\Scripts\activate.bat`.
+
 4. Instale as dependências:
 
    ```bash
@@ -145,7 +147,7 @@ As dependências têm as versões fixadas em `requirements.txt` para garantir um
 
 ### Decisão sobre dependências de NLP
 
-A normalização de textos (Issue 4) utilizará o **nltk**, incluído em `requirements.txt`: ele é instalável apenas via pip e oferece *stopwords* e o stemmer RSLP em português — os dados linguísticos necessários são baixados sob demanda com `nltk.download(...)`. O **spacy** foi descartado por exigir o download separado de um modelo pré-treinado (`pt_core_news_sm`), o que complicaria a reprodução do ambiente. Caso a lematização se mostre necessária, a decisão poderá ser revista na Issue 4.
+A normalização de textos (Issue 4) utilizará o **nltk**, incluído em `requirements.txt`: ele é instalável apenas via pip e oferece *stopwords* e o stemmer RSLP em português. Os dados linguísticos necessários são leves e baixados sob demanda com `nltk.download(...)` — na Issue 4 serão usados `stopwords`, `rslp_stemmer` e `punkt_tab`. O **spacy** foi descartado por depender de um modelo de pipeline completo (`pt_core_news_sm`) baixado separadamente — mais pesado e mais um artefato a manter. Observação: os dados do nltk não são travados pelo `requirements.txt`; a versão utilizada deve ser registrada na documentação de decisões (Issue 11). Caso a lematização se mostre necessária, a decisão poderá ser revista na Issue 4.
 
 ## Organização dos dados
 
