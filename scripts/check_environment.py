@@ -11,6 +11,7 @@ import importlib
 import importlib.metadata
 
 # nome do pacote (requirements.txt) -> módulo importável
+# Mantenha em sincronia com MAIN_DEPENDENCIES em tests/test_environment.py.
 DEPENDENCIES = {
     "numpy": "numpy",
     "pandas": "pandas",
@@ -28,12 +29,19 @@ def main() -> int:
     for package, module in DEPENDENCIES.items():
         try:
             importlib.import_module(module)
-        except ImportError as error:
+        # Instalações parcialmente quebradas podem levantar outros erros na
+        # importação (RuntimeError, OSError etc.), não apenas ImportError.
+        except Exception as error:
             failures.append(package)
             print(f"[FALHA] {package}: {error}")
-        else:
+            continue
+
+        try:
             version = importlib.metadata.version(package)
-            print(f"[OK] {package} {version}")
+        except importlib.metadata.PackageNotFoundError:
+            version = "?"
+
+        print(f"[OK] {package} {version}")
 
     if failures:
         print(f"\n{len(failures)} dependência(s) ausente(s): {', '.join(failures)}")
