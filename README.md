@@ -48,6 +48,8 @@ O artigo utilizado como base está disponível localmente na raiz deste reposit�
 │   └── README.md
 ├── notebooks/
 │   └── .gitkeep
+├── scripts/
+│   └── check_environment.py
 ├── src/
 │   ├── data/
 │   │   └── __init__.py
@@ -62,7 +64,8 @@ O artigo utilizado como base está disponível localmente na raiz deste reposit�
 │   └── __init__.py
 ├── tests/
 │   ├── .gitkeep
-│   └── __init__.py
+│   ├── __init__.py
+│   └── test_environment.py
 ├── results/
 │   ├── figures/
 │   │   └── .gitkeep
@@ -79,6 +82,7 @@ O artigo utilizado como base está disponível localmente na raiz deste reposit�
 - `data/raw/`: datasets originais, sem alterações. Os arquivos de dados não devem ser versionados por padrão.
 - `data/processed/`: dados gerados por limpeza, transformação ou preparação.
 - `notebooks/`: análises exploratórias, experimentos e registros de investigação em Jupyter.
+- `scripts/`: utilitários executados diretamente, como a verificação do ambiente (`scripts/check_environment.py`).
 - `src/data/`: código reutilizável de carregamento e manipulação inicial dos dados.
 - `src/preprocessing/`: código reutilizável de pré-processamento e extração de características.
 - `src/models/`: implementação e treinamento dos modelos.
@@ -93,7 +97,9 @@ Os notebooks devem apoiar a exploração e a comunicação dos experimentos. O c
 
 ## Configuração do ambiente
 
-É recomendado utilizar Python 3.10 ou uma versão mais recente compatível com as dependências do projeto.
+O projeto requer **Python 3.12 ou mais recente** — piso exigido pelas versões travadas em `requirements.txt` (`numpy` e `scipy` exigem 3.12+). A instalação foi validada em **Linux com Python 3.14**; os comandos para Windows estão documentados abaixo, mas ainda não foram validados em uma máquina Windows.
+
+As dependências têm as versões fixadas em `requirements.txt` para garantir um ambiente reproduzível entre os integrantes.
 
 1. Clone o repositório e acesse sua pasta:
 
@@ -125,8 +131,21 @@ Os notebooks devem apoiar a exploração e a comunicação dos experimentos. O c
 4. Instale as dependências:
 
    ```bash
-   pip install -r requirements.txt
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
    ```
+
+5. Verifique a instalação:
+
+   ```bash
+   python scripts/check_environment.py
+   ```
+
+   O comando importa todas as dependências principais e imprime as versões instaladas. Se algo estiver faltando, ele termina com código de saída diferente de zero.
+
+### Decisão sobre dependências de NLP
+
+A normalização de textos (Issue 4) utilizará o **nltk**, incluído em `requirements.txt`: ele é instalável apenas via pip e oferece *stopwords* e o stemmer RSLP em português — os dados linguísticos necessários são baixados sob demanda com `nltk.download(...)`. O **spacy** foi descartado por exigir o download separado de um modelo pré-treinado (`pt_core_news_sm`), o que complicaria a reprodução do ambiente. Caso a lematização se mostre necessária, a decisão poderá ser revista na Issue 4.
 
 ## Organização dos dados
 
