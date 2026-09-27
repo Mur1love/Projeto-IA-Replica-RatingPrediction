@@ -1,5 +1,11 @@
-numpy
-pandas
-scikit-learn
-matplotlib
-jupyter
+# Dependências do escopo inicial (Issue #1).
+# Versões travadas para garantir um ambiente reproduzível.
+# Requer Python 3.12 ou mais recente.
+numpy==2.5.3
+pandas==3.0.6
+scikit-learn==1.9.1
+scipy==1.18.1
+matplotlib==3.11.2
+jupyter==1.1.1
+pytest==9.1.1
+nltk==3.10.3

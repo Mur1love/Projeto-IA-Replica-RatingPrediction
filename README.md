@@ -48,6 +48,8 @@ O artigo utilizado como base está disponível localmente na raiz deste reposit�
 │   └── README.md
 ├── notebooks/
 │   └── .gitkeep
+├── scripts/
+│   └── check_environment.py
 ├── src/
 │   ├── data/
 │   │   └── __init__.py
@@ -62,7 +64,8 @@ O artigo utilizado como base está disponível localmente na raiz deste reposit�
 │   └── __init__.py
 ├── tests/
 │   ├── .gitkeep
-│   └── __init__.py
+│   ├── __init__.py
+│   └── test_environment.py
 ├── results/
 │   ├── figures/
 │   │   └── .gitkeep
@@ -79,6 +82,7 @@ O artigo utilizado como base está disponível localmente na raiz deste reposit�
 - `data/raw/`: datasets originais, sem alterações. Os arquivos de dados não devem ser versionados por padrão.
 - `data/processed/`: dados gerados por limpeza, transformação ou preparação.
 - `notebooks/`: análises exploratórias, experimentos e registros de investigação em Jupyter.
+- `scripts/`: utilitários executados diretamente, como a verificação do ambiente (`scripts/check_environment.py`).
 - `src/data/`: código reutilizável de carregamento e manipulação inicial dos dados.
 - `src/preprocessing/`: código reutilizável de pré-processamento e extração de características.
 - `src/models/`: implementação e treinamento dos modelos.
@@ -93,7 +97,9 @@ Os notebooks devem apoiar a exploração e a comunicação dos experimentos. O c
 
 ## Configuração do ambiente
 
-É recomendado utilizar Python 3.10 ou uma versão mais recente compatível com as dependências do projeto.
+O projeto requer **Python 3.12 ou mais recente** — piso exigido pelas versões travadas em `requirements.txt` (`numpy` e `scipy` exigem 3.12+). A instalação foi validada em **Linux com Python 3.14**; os comandos para Windows estão documentados abaixo, mas ainda não foram validados em uma máquina Windows.
+
+As dependências têm as versões fixadas em `requirements.txt` para garantir um ambiente reproduzível entre os integrantes.
 
 1. Clone o repositório e acesse sua pasta:
 
@@ -122,11 +128,26 @@ Os notebooks devem apoiar a exploração e a comunicação dos experimentos. O c
    .venv\Scripts\Activate.ps1
    ```
 
+   Se o PowerShell bloquear a execução do script de ativação (política padrão em algumas máquinas), execute `Set-ExecutionPolicy -Scope Process RemoteSigned` antes de ativar, ou use o prompt do cmd: `.venv\Scripts\activate.bat`.
+
 4. Instale as dependências:
 
    ```bash
-   pip install -r requirements.txt
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
    ```
+
+5. Verifique a instalação:
+
+   ```bash
+   python scripts/check_environment.py
+   ```
+
+   O comando importa todas as dependências principais e imprime as versões instaladas. Se algo estiver faltando, ele termina com código de saída diferente de zero.
+
+### Decisão sobre dependências de NLP
+
+A normalização de textos (Issue 4) utilizará o **nltk**, incluído em `requirements.txt`: ele é instalável apenas via pip e oferece *stopwords* e o stemmer RSLP em português. Os dados linguísticos necessários são leves e baixados sob demanda com `nltk.download(...)` — na Issue 4 serão usados `stopwords`, `rslp` e `punkt_tab`. O **spacy** foi descartado por depender de um modelo de pipeline completo (`pt_core_news_sm`) baixado separadamente — mais pesado e mais um artefato a manter. Observação: os dados do nltk não são travados pelo `requirements.txt`; a versão utilizada deve ser registrada na documentação de decisões (Issue 11). Caso a lematização se mostre necessária, a decisão poderá ser revista na Issue 4.
 
 ## Organização dos dados
 
