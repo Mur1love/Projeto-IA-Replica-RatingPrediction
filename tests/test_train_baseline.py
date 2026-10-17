@@ -30,3 +30,12 @@ def test_cli_sample_gera_json_e_png(tmp_path):
     assert metrics_p.exists() and fig_p.exists()
     payload = json.loads(metrics_p.read_text(encoding="utf-8"))
     assert set(payload["metrics_logreg"]) == {"accuracy", "f1_macro", "mae", "rmse"}
+
+
+def test_artefatos_finais_existem_e_sao_validos():
+    payload = json.loads(
+        Path("results/metrics/baseline_logreg.json").read_text(encoding="utf-8")
+    )
+    assert payload["seed"] == 42
+    assert payload["n_train"] + payload["n_dropped_train"] == 41172
+    assert Path("results/figures/confusion_matrix_logreg.png").exists()

@@ -60,8 +60,11 @@ data/processed/*
 # Resultados e artefatos gerados: mantenha apenas os marcadores
 results/figures/*
 !results/figures/.gitkeep
+!results/figures/confusion_matrix_logreg.png
 results/metrics/*
 !results/metrics/.gitkeep
+!results/metrics/baseline_logreg.json
+!results/metrics/README.md
 
 # Artefatos comuns de modelos e dados grandes
 *.pkl

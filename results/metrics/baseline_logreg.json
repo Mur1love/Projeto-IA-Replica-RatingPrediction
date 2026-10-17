@@ -1,0 +1,38 @@
+{
+  "seed": 42,
+  "lr_params": {
+    "C": 1.0,
+    "max_iter": 1000,
+    "solver": "lbfgs"
+  },
+  "vectorizer_params": {
+    "lowercase": true,
+    "strip_accents": "unicode",
+    "ngram_range": [
+      1,
+      2
+    ],
+    "min_df": 5,
+    "max_df": 0.95,
+    "sublinear_tf": true
+  },
+  "normalization": {},
+  "n_train": 41171,
+  "n_test": 10292,
+  "n_dropped_train": 1,
+  "n_dropped_test": 1,
+  "sklearn_version": "1.9.1",
+  "majority_label": 2,
+  "metrics_logreg": {
+    "accuracy": 0.4897979012825496,
+    "f1_macro": 0.48618654266607386,
+    "mae": 0.6818888457054022,
+    "rmse": 1.0619190073802816
+  },
+  "metrics_majority": {
+    "accuracy": 0.19996113486202877,
+    "f1_macro": 0.06665587044534413,
+    "mae": 1.200155460551885,
+    "rmse": 1.4143509647112744
+  }
+}
