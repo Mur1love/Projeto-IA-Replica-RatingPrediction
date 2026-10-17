@@ -20,3 +20,12 @@ def test_notebook_colab_tem_celulas_obrigatorias():
         "SAMPLE_N",
     ]:
         assert token in src, f"faltando {token}"
+
+
+def test_notebook_nao_forca_pandas_pinado_no_colab():
+    nb = json.loads(
+        Path("notebooks/baseline_logreg_colab.ipynb").read_text(encoding="utf-8")
+    )
+    cell1 = "".join(nb["cells"][1]["source"])
+    assert "google.colab" in cell1 and "IN_COLAB" in cell1
+    assert "pip install -q scikit-learn matplotlib nltk joblib" in cell1
