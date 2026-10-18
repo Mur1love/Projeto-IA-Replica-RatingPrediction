@@ -51,6 +51,75 @@ def test_notebook_colab_validation_tem_split_e_saidas():
         assert token in code, f"faltando no notebook: {token}"
 
 
+def test_notebook_validation_fallback_funciona_sem_modulos_issue7(tmp_path):
+    nb = json.loads(NOTEBOOK.read_text(encoding="utf-8"))
+    cell3 = "".join(nb["cells"][3]["source"])
+    verify_fallbacks = r"""
+import importlib.abc
+import pathlib
+import sys
+
+blocked = {
+    "src.data.splitting",
+    "src.models.baseline",
+    "src.evaluation.metrics",
+    "src.evaluation.plots",
+}
+
+class MissingIssue7Modules(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname in blocked:
+            raise ModuleNotFoundError(
+                f"No module named {fullname!r} (simulated origin/main)", name=fullname
+            )
+
+sys.meta_path.insert(0, MissingIssue7Modules())
+namespace = {
+    "__name__": "__main__",
+    "Path": pathlib.Path,
+    "DATA_DIR": pathlib.Path(sys.argv[2]) / "data" / "raw",
+}
+exec(compile(sys.argv[1], "<validation-cell-3>", "exec"), namespace)
+
+import numpy as np
+import pandas as pd
+import scipy.sparse as sp
+
+rows = [
+    {"text": f"review rating {rating} sample {i}", "rating": rating, "marker": f"{rating}-{i}"}
+    for rating in range(1, 6)
+    for i in range(10)
+]
+rows.append({"text": "   ", "rating": 1, "marker": "empty"})
+train, validation = namespace["split_train_validation"](pd.DataFrame(rows))
+assert (len(train), len(validation)) == (40, 10)
+assert "empty" not in set(train.marker) | set(validation.marker)
+
+X = sp.csr_matrix([[2.0, 0.0], [0.0, 2.0], [1.5, 0.2], [0.1, 1.8]])
+y = np.array([0, 4, 0, 4])
+model = namespace["train_logistic_regression"](X, y)
+assert model.predict(X).shape == (4,)
+assert namespace["compute_metrics"](y, y)["accuracy"] == 1.0
+assert namespace["majority_class_label"](np.array([0, 1, 1, 4])) == 1
+assert namespace["predict_majority"](np.array([0, 1, 1, 4]), 2).tolist() == [1, 1]
+
+figure = pathlib.Path(sys.argv[2]) / "fallback.png"
+namespace["save_confusion_matrix"](y, model.predict(X), figure)
+assert figure.is_file() and figure.stat().st_size > 0
+"""
+    env = os.environ.copy()
+    env["OUTPUT_DIR"] = str(tmp_path / "results")
+    result = subprocess.run(
+        [sys.executable, "-c", verify_fallbacks, cell3, str(tmp_path)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_notebook_colab_validation_executa_com_dados_locais(tmp_path):
     train_path = tmp_path / "train.csv"
     test_path = tmp_path / "test.csv"
@@ -113,16 +182,36 @@ def test_notebook_colab_validation_executa_com_dados_locais(tmp_path):
         "mae",
         "rmse",
     }
+    assert full_metrics["n_train"] == 400
+    assert full_metrics["n_test"] == 100
+    assert full_metrics["n_dropped_train"] == 0
+    assert set(full_metrics["metrics_majority"]) == {
+        "accuracy",
+        "f1_macro",
+        "mae",
+        "rmse",
+    }
+    assert full_metrics["majority_label"] in range(5)
     assert set(validation_metrics["metrics_validation"]) == {
         "accuracy",
         "f1_macro",
         "mae",
         "rmse",
     }
+    assert validation_metrics["n_source_rows"] == 400
+    assert validation_metrics["n_dropped_empty"] == 0
+    assert validation_metrics["n_train"] == 320
+    assert validation_metrics["n_validation"] == 80
     assert (output_dir / "figures" / "confusion_matrix_logreg.png").stat().st_size > 0
     assert (
         output_dir / "figures" / "confusion_matrix_logreg_validation.png"
     ).stat().st_size > 0
-    assert len(
-        pd.read_csv(output_dir / "metrics" / "baseline_logreg_comparison.csv")
-    ) == 4
+    comparison = pd.read_csv(output_dir / "metrics" / "baseline_logreg_comparison.csv")
+    assert len(comparison) == 4
+    assert comparison.columns.tolist() == [
+        "metric",
+        "sample_train_test",
+        "sample_80_validation",
+        "validation_minus_test",
+        "better_direction",
+    ]
