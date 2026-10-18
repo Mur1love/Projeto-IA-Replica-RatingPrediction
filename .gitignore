@@ -28,6 +28,9 @@ htmlcov/
 # Jupyter Notebook
 .ipynb_checkpoints/
 
+# Planos auxiliares locais do Superpowers
+docs/superpowers/
+
 # IDEs e editores
 .idea/
 .vscode/
