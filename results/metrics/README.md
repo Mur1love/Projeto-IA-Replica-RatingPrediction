@@ -21,3 +21,13 @@ Artefatos versionados: `baseline_logreg_validation.json`,
 lado o baseline treinado em 100% do treino e avaliado no teste oficial e o
 modelo treinado em 80% do treino e avaliado na validação; portanto, os tamanhos
 de treino e os conjuntos avaliados diferem.
+
+| Métrica | Treino completo → teste oficial | Treino 80% → validação | Validação − teste |
+| --- | ---: | ---: | ---: |
+| Acurácia | 0,4898 | 0,4860 | −0,0038 |
+| F1 macro | 0,4862 | 0,4827 | −0,0035 |
+| MAE (estrelas) | 0,6819 | 0,7004 | +0,0185 |
+| RMSE (estrelas) | 1,0619 | 1,0879 | +0,0260 |
+
+As métricas são próximas. O modelo de validação foi treinado com menos dados,
+então a pequena diferença não é uma comparação perfeitamente equivalente.
