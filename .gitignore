@@ -61,9 +61,12 @@ data/processed/*
 results/figures/*
 !results/figures/.gitkeep
 !results/figures/confusion_matrix_logreg.png
+!results/figures/confusion_matrix_logreg_validation.png
 results/metrics/*
 !results/metrics/.gitkeep
 !results/metrics/baseline_logreg.json
+!results/metrics/baseline_logreg_validation.json
+!results/metrics/baseline_logreg_comparison.csv
 !results/metrics/README.md
 
 # Artefatos comuns de modelos e dados grandes
