@@ -46,7 +46,7 @@ def _load_normalized(csv_path: str | Path) -> tuple[pd.DataFrame, int]:
 def _stratified_sample(df: pd.DataFrame, n: int, seed: int) -> pd.DataFrame:
     if n <= 0 or n >= len(df):
         return df
-    _, sub = train_test_split(
+    sub, _ = train_test_split(
         df, train_size=n, stratify=df[RATING_COL], random_state=seed
     )
     return sub.reset_index(drop=True)

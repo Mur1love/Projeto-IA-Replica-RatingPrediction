@@ -1,9 +1,13 @@
 """Notebook Colab (Issue 7) — RED."""
 
 import json
+import ast
 import subprocess
 import sys
 from pathlib import Path
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
 
 
 def test_notebook_colab_tem_celulas_obrigatorias():
@@ -31,6 +35,51 @@ def test_notebook_nao_forca_pandas_pinado_no_colab():
     cell1 = "".join(nb["cells"][1]["source"])
     assert "google.colab" in cell1 and "IN_COLAB" in cell1
     assert "pip install -q scikit-learn matplotlib nltk joblib" in cell1
+
+
+def test_notebook_amostra_tamanho_solicitado_em_treino_e_teste():
+    nb = json.loads(
+        Path("notebooks/baseline_logreg_colab.ipynb").read_text(encoding="utf-8")
+    )
+    cell4 = "".join(nb["cells"][4]["source"])
+    module = ast.parse(cell4)
+    assignments = [
+        node
+        for node in module.body
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(target, ast.Tuple)
+            and any(
+                isinstance(name, ast.Name)
+                and name.id in {"tr_sample", "te_sample"}
+                for name in target.elts
+            )
+            for target in node.targets
+        )
+    ]
+    assert len(assignments) == 2
+
+    train_df = pd.DataFrame(
+        {"text": [f"train {r}" for r in range(1, 6) for _ in range(50)],
+         "rating": [r for r in range(1, 6) for _ in range(50)]}
+    )
+    test_df = pd.DataFrame(
+        {"text": [f"test {r}" for r in range(1, 6) for _ in range(100)],
+         "rating": [r for r in range(1, 6) for _ in range(100)]}
+    )
+    namespace = {
+        "train_test_split": train_test_split,
+        "train_df": train_df,
+        "test_df": test_df,
+        "SAMPLE_N": 100,
+        "SEED": 42,
+        "min": min,
+        "max": max,
+    }
+    exec(compile(ast.Module(body=assignments, type_ignores=[]), "<sample-cell>", "exec"), namespace)
+
+    assert len(namespace["tr_sample"]) == 100
+    assert len(namespace["te_sample"]) == 200
 
 
 def test_cell3_funciona_quando_main_ainda_nao_tem_modulos_issue7(tmp_path):

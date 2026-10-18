@@ -1,8 +1,10 @@
 """Treino do baseline LR (Issue 7) — RED."""
 
 import numpy as np
+import pandas as pd
 import scipy.sparse as sp
 
+from scripts.train_baseline import _stratified_sample
 from src.models.baseline import load_model, save_model, train_logistic_regression
 
 
@@ -21,3 +23,17 @@ def test_save_load_model_roundtrip(tmp_path):
     p = save_model(m, tmp_path / "lr.joblib")
     assert p.exists()
     np.testing.assert_array_equal(load_model(p).predict(X_toy), m.predict(X_toy))
+
+
+def test_stratified_sample_retorna_quantidade_solicitada():
+    df = pd.DataFrame(
+        {
+            "text": [f"review {rating} exemplo {i}" for rating in range(1, 6) for i in range(10)],
+            "rating": [rating for rating in range(1, 6) for _ in range(10)],
+        }
+    )
+
+    sample = _stratified_sample(df, 20, 42)
+
+    assert len(sample) == 20
+    assert sample["rating"].value_counts().sort_index().tolist() == [4] * 5
