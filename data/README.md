@@ -73,3 +73,23 @@ Cada CSV contém:
 `train.csv` e `test.csv` não são versionados no Git — já cobertos pelo
 `.gitignore` do projeto (ver `data/raw/` e `data/processed/`). Para obter os
 arquivos localmente, ver seção "Forma de obtenção" acima.
+
+### Split local para validação (Issue 7)
+
+Para separar 20% do treino oficial para validação, execute na raiz do projeto:
+
+```bash
+python scripts/create_validation_split.py \
+  --train data/raw/train.csv \
+  --out data/raw/validation.csv \
+  --validation-size 0.2 \
+  --seed 42
+```
+
+O script estratifica por `rating`, exclui textos vazios conforme a normalização
+do projeto e preserva no CSV de saída todas as colunas/valores originais. Com a
+base atual, gera 8.235 registros de validação e deixa 32.936 para treino. O
+arquivo `data/raw/validation.csv` é gerado localmente e continua ignorado pelo
+Git: contém reviews derivados da mesma base sem licença de redistribuição
+especificada. O código, a seed e os resultados das métricas são versionados; o
+CSV deve ser recriado a partir do `train.csv` local.

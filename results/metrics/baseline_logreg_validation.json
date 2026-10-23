@@ -1,0 +1,36 @@
+{
+  "seed": 42,
+  "validation_size": 0.2,
+  "n_source_rows": 41172,
+  "n_dropped_empty": 1,
+  "n_train": 32936,
+  "n_validation": 8235,
+  "validation_csv": "data/raw/validation.csv",
+  "validation_csv_sha256": "99f79776959cd6fc1c77a3281c1086f10c4157c1833fcfe1fe954f48d9d47858",
+  "sklearn_version": "1.9.1",
+  "lr_params": {
+    "C": 1.0,
+    "max_iter": 1000,
+    "solver": "lbfgs",
+    "random_state": 42
+  },
+  "vectorizer_params": {
+    "lowercase": true,
+    "strip_accents": "unicode",
+    "ngram_range": [
+      1,
+      2
+    ],
+    "min_df": 5,
+    "max_df": 0.95,
+    "sublinear_tf": true
+  },
+  "metrics_validation": {
+    "accuracy": 0.48597449908925316,
+    "f1_macro": 0.48272711134738777,
+    "mae": 0.7004250151791135,
+    "rmse": 1.0878810249603268
+  },
+  "baseline_metrics_path": "results/metrics/baseline_logreg.json",
+  "comparison_csv": "results/metrics/baseline_logreg_comparison.csv"
+}
