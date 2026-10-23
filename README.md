@@ -74,7 +74,8 @@ O artigo utilizado como base está disponível localmente na raiz deste reposit�
 ├── RatingPredictionInBrazilianPortugueseReviews.pdf
 ├── .gitignore
 ├── README.md
-└── requirements.txt
+├── requirements.txt
+└── run_baseline.py
 ```
 
 ### Finalidade dos diretórios
@@ -154,6 +155,68 @@ A normalização de textos (Issue 4) utilizará o **nltk**, incluído em `requir
 Os datasets originais devem ser armazenados em `data/raw/` e preservados sem modificações. Em `data/processed/` devem ser salvos somente os dados resultantes de limpeza, transformação ou preparação.
 
 Datasets e artefatos gerados podem ser grandes ou conter informações que não devem ser publicadas. Por isso, o `.gitignore` impede o versionamento desses arquivos por padrão. A forma de obtenção dos dados e eventuais decisões de preparação devem ser documentadas em `data/README.md`.
+
+## Executando o baseline
+
+O script `run_baseline.py` (na raiz) reproduz o baseline **TF-IDF + Regressão Logística** de ponta a ponta, com um único comando, a partir de `data/raw/train.csv` e `data/raw/test.csv` (ver `data/README.md` para obtê-los). Com o ambiente virtual ativado, na raiz do repositório:
+
+```bash
+python run_baseline.py
+```
+
+O comando executa, em sequência:
+
+1. **Normalização** do texto (`src/preprocessing/normalization.py`);
+2. **Encoding** do rating, de 1..5 para 0..4 (`src/preprocessing/encoding.py`);
+3. **Embedding** TF-IDF, com `fit` apenas no treino e `transform` no teste (`src/preprocessing/embedding.py`);
+4. **Modelagem**: treino da Regressão Logística, avaliação no teste e comparação com o baseline trivial de classe majoritária (`src/models/baseline.py`, `src/evaluation/`).
+
+Apenas as colunas `text` e `rating` são usadas; as 58 features dos CSVs não fazem parte do baseline.
+
+### Execução rápida (para testes)
+
+```bash
+python run_baseline.py --sample-size 2000
+```
+
+Usa uma amostra estratificada por nota (2000 linhas de treino e 25% disso no teste) e termina em poucos segundos. As saídas levam o prefixo `baseline_sample` e ficam em `data/processed/sample/`, então **não sobrescrevem** os resultados da base completa. O valor mínimo aceito é 100.
+
+### Argumentos
+
+| Argumento | Padrão | Descrição |
+| --- | --- | --- |
+| `--train` | `data/raw/train.csv` | CSV de treino |
+| `--test` | `data/raw/test.csv` | CSV de teste |
+| `--processed-dir` | `data/processed` | Saída do TF-IDF, rótulos, vetorizador e modelo |
+| `--metrics-dir` | `results/metrics` | Saída do JSON de métricas |
+| `--figures-dir` | `results/figures` | Saída da matriz de confusão |
+| `--seed` | `42` | Semente da amostragem e da Regressão Logística |
+| `--sample-size` | *(base completa)* | Nº de linhas de treino na execução rápida |
+| `--C` | `1.0` | Regularização da Regressão Logística |
+| `--max-iter` | `1000` | Máximo de iterações da Regressão Logística |
+
+Use `python run_baseline.py --help` para ver a lista completa.
+
+### Saídas
+
+Os nomes abaixo valem para a base completa; na execução rápida, `baseline` vira `baseline_sample`.
+
+| Arquivo | Conteúdo |
+| --- | --- |
+| `results/metrics/baseline_metrics.json` | Configuração, tamanhos dos dados, métricas (acurácia, F1-macro, MAE, RMSE) da Regressão Logística e da classe majoritária, e tempo de cada etapa |
+| `results/figures/baseline_confusion_matrix.png` | Matriz de confusão no teste (notas 1 a 5) |
+| `data/processed/tfidf_train.npz`, `tfidf_test.npz` | Matrizes TF-IDF esparsas |
+| `data/processed/tfidf_train_y.npy`, `tfidf_test_y.npy` | Rótulos (0..4) alinhados às matrizes |
+| `data/processed/tfidf_vectorizer.joblib` | Vetorizador ajustado no treino |
+| `data/processed/tfidf_stats.json` | Estatísticas do TF-IDF, parâmetros e versão do scikit-learn |
+| `data/processed/baseline_lr.joblib` | Modelo de Regressão Logística treinado |
+| `data/processed/baseline_test_pred.npy` | Previsões (labels 0..4) no teste |
+
+MAE e RMSE são calculados na escala original de 1 a 5 estrelas. Todos esses arquivos são ignorados pelo Git (ver `.gitignore`).
+
+### Reprodutibilidade
+
+Com a mesma `--seed`, os mesmos CSVs e as mesmas versões das dependências (`requirements.txt`), duas execuções geram métricas idênticas. Trocar a semente altera a amostra da execução rápida e a inicialização da Regressão Logística.
 
 ## Fluxo de desenvolvimento
 
