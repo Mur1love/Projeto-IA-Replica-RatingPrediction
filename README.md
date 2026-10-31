@@ -218,6 +218,38 @@ MAE e RMSE são calculados na escala original de 1 a 5 estrelas. Todos esses arq
 
 Com a mesma `--seed`, os mesmos CSVs e as mesmas versões das dependências (`requirements.txt`), duas execuções geram métricas idênticas. Trocar a semente altera a amostra da execução rápida e a inicialização da Regressão Logística.
 
+## Testes automatizados
+
+Os testes ficam em `tests/` e usam [pytest](https://docs.pytest.org/). Com o ambiente virtual ativado, na raiz do repositório:
+
+```bash
+python -m pytest
+```
+
+Para ver também a cobertura de `src/` (as linhas não cobertas aparecem na coluna `Missing`):
+
+```bash
+python -m pytest --cov --cov-fail-under=80
+```
+
+A configuração está em `pytest.ini` (pasta de testes) e `.coveragerc` (cobertura medida apenas sobre `src/`).
+
+Cobertura por etapa do pipeline:
+
+| Etapa | Arquivos de teste |
+|---|---|
+| Normalização | `test_normalization.py`, `test_normalizacao_casos_reais.py` |
+| Label encoding | `test_encoding.py`, `test_encoding_dados_reais.py` |
+| Embedding TF-IDF | `test_embedding.py`, `test_tfidf_reuso.py` |
+| Métricas e baseline | `test_metrics.py`, `test_metricas_valores_conhecidos.py`, `test_baseline.py` |
+| Reprodutibilidade (seed fixa) | `test_reprodutibilidade.py`, `test_splitting.py` |
+
+Observações:
+
+- Os testes `*_casos_reais`, `*_dados_reais`, `test_tfidf_reuso.py` e parte de `test_reprodutibilidade.py` leem uma amostra de `data/raw/train.csv`. Se o arquivo não existir na máquina, esses testes são **pulados** (`SKIPPED`), e os demais continuam rodando. Veja `data/README.md` para obter os CSVs.
+- `test_train_baseline.py` executa o script do baseline e exige `data/raw/train.csv` e `data/raw/test.csv`.
+- Antes de abrir um Pull Request, rode `python -m pytest`: todos os testes devem passar.
+
 ## Fluxo de desenvolvimento
 
 O fluxo esperado é:
