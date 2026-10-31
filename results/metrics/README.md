@@ -31,3 +31,20 @@ de treino e os conjuntos avaliados diferem.
 
 As métricas são próximas. O modelo de validação foi treinado com menos dados,
 então a pequena diferença não é uma comparação perfeitamente equivalente.
+
+
+## Comparação com e sem normalização
+
+Comando: `python scripts/compare_normalization.py --protocol validation` (decisão, não usa o teste)
+e `python scripts/compare_normalization.py` (confirmação no teste oficial). Seed fixa: 42.
+Sete variantes de pré-processamento, mesmas linhas e mesmo modelo em todas; bootstrap pareado
+(1.000 reamostragens) para o IC 95% da diferença contra `sem_normalizacao`.
+
+Artefatos versionados (para cada protocolo, `.csv` = tabela única, `.md` = a mesma tabela
+formatada, `.json` = configuração e ICs do bootstrap):
+`normalization_comparison_validation.*` e `normalization_comparison.*`.
+A coluna `tempo_s` dos CSVs varia a cada execução; as demais são determinísticas no mesmo ambiente.
+
+Resultado: nenhuma variante se distingue da referência em acurácia ou F1 (|Δ| ≤ 0,0026). Análise e
+decisão em [`docs/diferencas.md`](../../docs/diferencas.md).
+

@@ -1,0 +1,184 @@
+{
+  "seed": 42,
+  "lr_params": {
+    "C": 1.0,
+    "max_iter": 1000,
+    "solver": "lbfgs"
+  },
+  "vectorizer_params": {
+    "lowercase": true,
+    "strip_accents": "unicode",
+    "ngram_range": [
+      1,
+      2
+    ],
+    "min_df": 5,
+    "max_df": 0.95,
+    "sublinear_tf": true
+  },
+  "variants": {
+    "sem_normalizacao": null,
+    "normalizacao_completa": {},
+    "apenas_acentos": {
+      "strip_accent": true,
+      "collapse_repeats": false,
+      "expand_abbreviations": false
+    },
+    "apenas_repeticoes": {
+      "strip_accent": false,
+      "collapse_repeats": true,
+      "expand_abbreviations": false
+    },
+    "apenas_abreviacoes": {
+      "strip_accent": false,
+      "collapse_repeats": false,
+      "expand_abbreviations": true
+    },
+    "completa_sem_pontuacao": {
+      "strip_punctuation": true
+    },
+    "completa_numero_token": {
+      "number_token": "NUM"
+    }
+  },
+  "reference": "sem_normalizacao",
+  "protocol": "test",
+  "n_train": 41171,
+  "n_test": 10292,
+  "n_bootstrap": 1000,
+  "sklearn_version": "1.9.1",
+  "bootstrap_vs_reference": {
+    "normalizacao_completa": {
+      "accuracy": {
+        "ic95_low": -0.003497862417411568,
+        "ic95_high": 0.0006801399144966705,
+        "significativo": false
+      },
+      "f1_macro": {
+        "ic95_low": -0.003503309037626806,
+        "ic95_high": 0.0007419766251521905,
+        "significativo": false
+      },
+      "mae": {
+        "ic95_low": -0.0020404197434900073,
+        "ic95_high": 0.004277594247959657,
+        "significativo": false
+      },
+      "rmse": {
+        "ic95_low": -0.0031813850322323033,
+        "ic95_high": 0.004053040481121028,
+        "significativo": false
+      }
+    },
+    "apenas_acentos": {
+      "accuracy": {
+        "ic95_low": 0.0,
+        "ic95_high": 0.0,
+        "significativo": false
+      },
+      "f1_macro": {
+        "ic95_low": 0.0,
+        "ic95_high": 0.0,
+        "significativo": false
+      },
+      "mae": {
+        "ic95_low": 0.0,
+        "ic95_high": 0.0,
+        "significativo": false
+      },
+      "rmse": {
+        "ic95_low": 0.0,
+        "ic95_high": 0.0,
+        "significativo": false
+      }
+    },
+    "apenas_repeticoes": {
+      "accuracy": {
+        "ic95_low": -0.00048824329576370435,
+        "ic95_high": 0.002331908278274397,
+        "significativo": false
+      },
+      "f1_macro": {
+        "ic95_low": -0.0004853502894997863,
+        "ic95_high": 0.002378470748339549,
+        "significativo": false
+      },
+      "mae": {
+        "ic95_low": -0.004566653711620683,
+        "ic95_high": -0.00048581422464055724,
+        "significativo": true
+      },
+      "rmse": {
+        "ic95_low": -0.0052795863536737545,
+        "ic95_high": -0.0009646939137444356,
+        "significativo": true
+      }
+    },
+    "apenas_abreviacoes": {
+      "accuracy": {
+        "ic95_low": -0.003109211037699179,
+        "ic95_high": 0.0005829770695686132,
+        "significativo": false
+      },
+      "f1_macro": {
+        "ic95_low": -0.003001071798958245,
+        "ic95_high": 0.0007974641905290456,
+        "significativo": false
+      },
+      "mae": {
+        "ic95_low": -0.0024290711232024557,
+        "ic95_high": 0.003497862417411568,
+        "significativo": false
+      },
+      "rmse": {
+        "ic95_low": -0.00447059168046689,
+        "ic95_high": 0.00282742777018517,
+        "significativo": false
+      }
+    },
+    "completa_sem_pontuacao": {
+      "accuracy": {
+        "ic95_low": -0.0027205596579867874,
+        "ic95_high": 0.0010687912942090594,
+        "significativo": false
+      },
+      "f1_macro": {
+        "ic95_low": -0.002684569021492175,
+        "ic95_high": 0.001123923248316304,
+        "significativo": false
+      },
+      "mae": {
+        "ic95_low": -0.0031092110376992332,
+        "ic95_high": 0.002817722502914899,
+        "significativo": false
+      },
+      "rmse": {
+        "ic95_low": -0.004816562458237528,
+        "ic95_high": 0.002643065497347574,
+        "significativo": false
+      }
+    },
+    "completa_numero_token": {
+      "accuracy": {
+        "ic95_low": -0.0033059657986786017,
+        "ic95_high": 0.001943256898562007,
+        "significativo": false
+      },
+      "f1_macro": {
+        "ic95_low": -0.0035726533414052906,
+        "ic95_high": 0.0018694919903966697,
+        "significativo": false
+      },
+      "mae": {
+        "ic95_low": -0.002914885347842902,
+        "ic95_high": 0.006121259230470247,
+        "significativo": false
+      },
+      "rmse": {
+        "ic95_low": -0.003058623163745072,
+        "ic95_high": 0.009098723168323348,
+        "significativo": false
+      }
+    }
+  }
+}
