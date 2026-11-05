@@ -1,0 +1,46 @@
+{
+  "model": "svm",
+  "features": "tfidf (Issue 6)",
+  "params": {
+    "kernel": "linear",
+    "C": 1.0
+  },
+  "params_note": "fixos, sem busca de hiperparâmetros",
+  "protocol": "treino em train.csv, avaliação em test.csv (sem validação cruzada)",
+  "seed": 42,
+  "sample_n": null,
+  "n_train": 41171,
+  "n_test": 10292,
+  "n_features": 28500,
+  "metrics": {
+    "mae": 0.6829576369996113,
+    "rmse": 1.0595832544657309,
+    "f1_macro": 0.48487111968273283,
+    "accuracy": 0.4884376214535562,
+    "auc": 0.8261060715922195,
+    "auc_scores": 0.9073583020828613
+  },
+  "fit_seconds": 603.646,
+  "sklearn_version": "1.9.1",
+  "comparison_with_baseline": {
+    "baseline": "Regressão Logística + TF-IDF (results/metrics/baseline_logreg.json)",
+    "logreg": {
+      "accuracy": 0.4897979012825496,
+      "f1_macro": 0.48618654266607386,
+      "mae": 0.6818888457054022,
+      "rmse": 1.0619190073802816
+    },
+    "svm": {
+      "accuracy": 0.4884376214535562,
+      "f1_macro": 0.48487111968273283,
+      "mae": 0.6829576369996113,
+      "rmse": 1.0595832544657309
+    },
+    "delta_svm_minus_logreg": {
+      "accuracy": -0.0013602798289933937,
+      "f1_macro": -0.0013154229833410302,
+      "mae": 0.001068791294209115,
+      "rmse": -0.0023357529145506817
+    }
+  }
+}

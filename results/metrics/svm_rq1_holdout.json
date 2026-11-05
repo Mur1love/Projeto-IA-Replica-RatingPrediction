@@ -1,0 +1,21 @@
+{
+  "model": "svm",
+  "protocol": "treino em train.csv, avaliação em test.csv, com os hiperparâmetros da busca",
+  "best_params": {
+    "kernel": "linear",
+    "gamma": "scale",
+    "C": 0.1
+  },
+  "sample_n": null,
+  "n_train": 41172,
+  "n_test": 10293,
+  "metrics": {
+    "mae": 1.047605168561158,
+    "rmse": 1.5159695909355215,
+    "f1_macro": 0.35385358800123207,
+    "accuracy": 0.3790925871951812,
+    "auc": 0.7294683652453307,
+    "auc_scores": 0.7998730816933703
+  },
+  "sklearn_version": "1.9.1"
+}

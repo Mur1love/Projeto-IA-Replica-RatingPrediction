@@ -48,3 +48,22 @@ A coluna `tempo_s` dos CSVs varia a cada execução; as demais são determiníst
 Resultado: nenhuma variante se distingue da referência em acurácia ou F1 (|Δ| ≤ 0,0026). Análise e
 decisão em [`docs/diferencas.md`](../../docs/diferencas.md).
 
+
+## SVM com as 58 features do artigo (RQ1) e comparação com TF-IDF
+
+Comando: `python scripts/train_article_model.py --model svm` (protocolo completo; o modo
+rápido `--sample-n 2000` grava em `results/sample/`, que não é versionado).
+Protocolo: `train.csv` + `test.csv` concatenados, 5 folds estratificados por `categoria_rating`
+sem embaralhar, `RandomizedSearchCV` (`n_iter=300`, que avalia 16 candidatos), RMSE como
+critério, seed 42. Detalhes e diferenças em [`docs/diferencas.md`](../../docs/diferencas.md), seção 3.
+
+Artefatos versionados: `svm_rq1.json` (média, desvio-padrão e IC 95% entre os folds, melhores
+parâmetros e comparação com a Tabela 3 do artigo), `svm_rq1_folds.csv` (métricas por fold),
+`svm_rq1_holdout.json` (treino em `train.csv`, avaliação em `test.csv`),
+`../figures/confusion_matrix_svm.png` (predições fora-da-dobra dos 5 folds) e `svm_tfidf.json`
+(`python scripts/train_svm_tfidf.py`: SVM sobre TF-IDF e diferença para `baseline_logreg.json`).
+
+Leitura das métricas: `auc` é a AUC do artigo (classes 4–5 estrelas positivas, a partir de predições
+binárias); `auc_scores` é um diagnóstico a partir de `decision_function`. MAE e RMSE estão na escala
+de 1 a 5 estrelas. O IC de 95% usa `t` com 4 graus de liberdade e é mais largo que o publicado no
+artigo (ver seção 3.3 de `docs/diferencas.md`).
