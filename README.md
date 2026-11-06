@@ -218,6 +218,59 @@ MAE e RMSE são calculados na escala original de 1 a 5 estrelas. Todos esses arq
 
 Com a mesma `--seed`, os mesmos CSVs e as mesmas versões das dependências (`requirements.txt`), duas execuções geram métricas idênticas. Trocar a semente altera a amostra da execução rápida e a inicialização da Regressão Logística.
 
+## Protocolo do artigo: SVM com as 58 features (RQ1)
+
+`scripts/train_article_model.py` replica o protocolo de avaliação do artigo (`code/train_model.py` do repositório original) para um classificador treinado com as **58 features textuais** dos CSVs (`str_*`, `pos_*`, `synt_*`, `lex_*`, `conc_*`, `twt_*`, `sbj_*`). `categoria`, `text` e `rating` nunca entram na matriz `X`; uma coluna inesperada (por exemplo, um índice ou `id`) interrompe a execução. Com o ambiente virtual ativado, na raiz do repositório:
+
+```bash
+python scripts/train_article_model.py --model svm --sample-n 2000   
+python scripts/train_article_model.py --model svm                   
+python scripts/train_svm_tfidf.py                                   
+```
+
+O protocolo, implementado em `src/models/article_protocol.py` e compartilhado pelos próximos modelos:
+
+1. `train.csv` + `test.csv` concatenados, nessa ordem (**o teste participa da validação cruzada**, como no artigo); nenhuma linha é removida, nem as de `text` vazio;
+2. 5 folds com `StratifiedKFold(shuffle=False)` estratificados por `categoria_rating`;
+3. `RandomizedSearchCV` com `scoring="neg_root_mean_squared_error"` e `random_state=42` sobre esses folds;
+4. refit do melhor estimador em cada fold e cálculo de MAE, RMSE (em estrelas), F1 macro, acurácia e AUC;
+5. média, desvio-padrão e IC de 95% (t de Student) entre os folds;
+6. complemento: treino em `train.csv` e avaliação em `test.csv` com os mesmos hiperparâmetros (holdout).
+
+A AUC segue o artigo: classes 4 e 5 estrelas como positivas, calculada a partir das **predições binárias**. Como diagnóstico, `auc_scores` usa `decision_function`.
+
+**Modo rápido**: `--sample-n 2000` usa uma amostra estratificada por `categoria_rating` que preserva a ordem das linhas. Levou cerca de 2 minutos em 1 CPU. As saídas vão para `results/sample/` (ignorado pelo Git), então **não sobrescrevem** os resultados completos.
+
+**Execução completa**: é cara. O `SVC` sem padronização dos dados (como no artigo) cresce de forma superlinear com o número de linhas: ~8,5 s para treinar com 3.200 linhas em kernel linear, num núcleo. Na execução de referência (`--n-jobs -1`), a busca levou ≈ 7,6 h e a avaliação dos 5 folds e do holdout ≈ 16 min; o tempo depende do número de núcleos (o padrão, `-1`, usa todos).
+
+| Argumento | Padrão | Descrição |
+| --- | --- | --- |
+| `--model` | *(obrigatório)* | Modelo a avaliar (`svm`) |
+| `--n-iter` | `300` | Candidatos do `RandomizedSearchCV` |
+| `--n-splits` | `5` | Folds estratificados |
+| `--seed` | `42` | Semente da busca e da amostragem |
+| `--sample-n` | *(base completa)* | Nº de linhas da execução rápida |
+| `--output-dir` | `results/` (`results/sample/` com `--sample-n`) | Pasta de saída (`metrics/` e `figures/`) |
+| `--shuffle` | desligado | Embaralha os folds (o artigo não embaralha; fica registrado no JSON) |
+| `--n-jobs` | `-1` | Processos paralelos |
+| `--train`, `--test` | `data/raw/*.csv` | CSVs de entrada |
+
+**Atenção ao `n_iter`**: o grid do SVM tem só 2 × 2 × 4 = 16 combinações, então `n_iter=300` equivale a uma busca exaustiva de **16 candidatos**, também no artigo. O JSON registra `n_iter_requested` e `n_candidates_evaluated`.
+
+Saídas (`<m>` = nome do modelo, `svm`):
+
+| Arquivo | Conteúdo |
+| --- | --- |
+| `results/metrics/<m>_rq1.json` | Configuração, melhores parâmetros, média, desvio-padrão e IC 95% de cada métrica, e comparação com a Tabela 3 do artigo |
+| `results/metrics/<m>_rq1_folds.csv` | Métricas de cada fold |
+| `results/metrics/<m>_rq1_holdout.json` | Treino em `train.csv`, avaliação em `test.csv` |
+| `results/figures/confusion_matrix_<m>.png` | Matriz de confusão agregada (predições fora-da-dobra dos 5 folds) |
+| `results/metrics/svm_tfidf.json` | SVM sobre a matriz TF-IDF (Issue 6) e diferença para a Regressão Logística do baseline |
+
+`scripts/train_svm_tfidf.py` treina o SVM (kernel linear, `C=1.0`, sem busca) sobre o TF-IDF no split oficial treino → teste e registra a diferença contra `baseline_logreg.json`. A comparação só é gravada na base completa. As decisões e diferenças em relação ao artigo estão em [`docs/diferencas.md`](docs/diferencas.md), seção 3.
+
+**Adicionar outro modelo (TAREFAS 12 a 14)**: crie um `ModelSpec` (como `SVM_SPEC` em `src/models/svm.py`) com o estimador, o grid e a linha da Tabela 3, e registre-o em `MODELS` no script.
+
 ## Testes automatizados
 
 Os testes ficam em `tests/` e usam [pytest](https://docs.pytest.org/). Com o ambiente virtual ativado, na raiz do repositório:
@@ -243,11 +296,13 @@ Cobertura por etapa do pipeline:
 | Embedding TF-IDF | `test_embedding.py`, `test_tfidf_reuso.py` |
 | Métricas e baseline | `test_metrics.py`, `test_metricas_valores_conhecidos.py`, `test_baseline.py` |
 | Reprodutibilidade (seed fixa) | `test_reprodutibilidade.py`, `test_splitting.py` |
+| Protocolo do artigo e SVM (RQ1) | `test_article_protocol.py`, `test_svm.py`, `test_train_article_model.py`, `test_article_protocol_dados_reais.py` |
 
 Observações:
 
 - Os testes `*_casos_reais`, `*_dados_reais`, `test_tfidf_reuso.py` e parte de `test_reprodutibilidade.py` leem uma amostra de `data/raw/train.csv`. Se o arquivo não existir na máquina, esses testes são **pulados** (`SKIPPED`), e os demais continuam rodando. Veja `data/README.md` para obter os CSVs.
 - `test_train_baseline.py` executa o script do baseline e exige `data/raw/train.csv` e `data/raw/test.csv`.
+- `test_article_protocol_dados_reais.py` é **pulado** sem `data/raw/train.csv` e `test.csv`; os demais testes do protocolo usam CSVs sintéticos e rodam em qualquer máquina.
 - Antes de abrir um Pull Request, rode `python -m pytest`: todos os testes devem passar.
 
 ## Fluxo de desenvolvimento

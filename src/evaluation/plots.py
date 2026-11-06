@@ -19,14 +19,18 @@ def save_confusion_matrix(
     path: str | Path,
     *,
     display_labels: tuple = (1, 2, 3, 4, 5),
+    title: str = "Matriz de confusão — Regressão Logística (TF-IDF)",
 ) -> Path:
-    """Salva a matriz de confusão (labels 0..4, exibidos 1..5) em PNG."""
+    """Salva a matriz de confusão (labels 0..4, exibidos 1..5) em PNG.
+
+    ``title`` tem como padrão o título do baseline; outros modelos informam o seu.
+    """
     cm = confusion_matrix(y_true, y_pred, labels=[0, 1, 2, 3, 4])
     _, ax = plt.subplots(figsize=(6, 5))
     ConfusionMatrixDisplay(cm, display_labels=list(display_labels)).plot(
         ax=ax, cmap="Blues", colorbar=False
     )
-    ax.set_title("Matriz de confusão — Regressão Logística (TF-IDF)")
+    ax.set_title(title)
     ax.set_xlabel("Predito (rating)")
     ax.set_ylabel("Verdadeiro (rating)")
     path = Path(path)
