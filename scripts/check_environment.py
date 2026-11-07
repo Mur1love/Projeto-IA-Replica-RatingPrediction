@@ -20,6 +20,7 @@ DEPENDENCIES = {
     "matplotlib": "matplotlib",
     "jupyter": "jupyter",
     "pytest": "pytest",
+    "xgboost": "xgboost",
     "nltk": "nltk",
 }
 
