@@ -29,13 +29,14 @@ from src.models.article_protocol import (  # noqa: E402
 )
 from src.models.svm import SVM_SPEC  # noqa: E402
 from src.models.random_forest import RANDOM_FOREST_SPEC  # noqa: E402
+from src.models.xgboost import XGB_SPEC  # noqa: E402
 
 logger = logging.getLogger("train_article_model")
 
 RAIZ = Path(__file__).resolve().parents[1]
 
-# TAREFAS 12 a 14: importe o ModelSpec do novo modelo e acrescente aqui.
-MODELS = {spec.name: spec for spec in (SVM_SPEC, RANDOM_FOREST_SPEC)}
+# TAREFAS 12 a 14 (e próximas): importe o ModelSpec do novo modelo e acrescente aqui.
+MODELS = {spec.name: spec for spec in (SVM_SPEC, RANDOM_FOREST_SPEC, XGB_SPEC)}
 
 
 def build_parser() -> argparse.ArgumentParser:
