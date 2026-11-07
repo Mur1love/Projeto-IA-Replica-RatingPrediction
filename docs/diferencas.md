@@ -211,3 +211,38 @@ python scripts/train_article_model.py --model svm --sample-n 2000   # rápido, ~
 python scripts/train_article_model.py --model svm                   # completo (≈ 8 h na execução de referência)
 python scripts/train_svm_tfidf.py                                   # SVM + TF-IDF vs. LR
 ```
+
+## 4. XGBoost com as 58 features (RQ1)
+
+O XGBoost foi o melhor modelo do artigo nas três métricas da Tabela 3 (MAE 0,9499 ± 0,0047; RMSE 1,3721 ± 0,0055; AUC 0,7390 ± 0,0046) e o escolhido para as RQs seguintes; por isso a TAREFA 14 o replica. Parte do texto abaixo refere-se à execução completa que é rodada no escopo da TAREFA 14 e cujos números finais preenchem as subseções 4.3 e 4.4.
+
+### 4.1 O que foi replicado
+
+`scripts/train_article_model.py --model xgboost` aplica o mesmo protocolo de `code/train_model.py` do repositório original (detalhes no `README.md`) ao `XGBClassifier`:
+
+| Item | Artigo | Réplica |
+| --- | --- | --- |
+| Dados | `train.csv` + `test.csv` concatenados (51.465 linhas) | Igual: **o teste participa da validação cruzada**. |
+| Features | 58 (`str_`, `pos_`, `synt_`, `lex_`, `conc_`, `twt_`, `sbj_`) | Igual; `categoria`, `text` e `rating` ficam fora; linhas com `text` vazio mantidas. |
+| Folds | `StratifiedKFold(5, shuffle=False)` por `categoria_rating` | Igual. |
+| Busca | `RandomizedSearchCV`, `n_iter=300`, RMSE, `random_state=42` | Igual. |
+| Grid | 9 dimensões (TAREFA 14), 8.748 combinações | Igual (exatamente os valores da TAREFA; teste fixa o grid). |
+| Métricas | MAE, RMSE, AUC (classes 4–5 positivas, sobre predições binárias) | Igual, mais F1 macro, acurácia e AUC de diagnóstico por `predict_proba`. |
+| Holdout | treino em `train.csv`, avaliação em `test.csv` | Igual, com os mesmos hiperparâmetros. |
+
+### 4.2 Diferenças em relação ao artigo
+
+1. **Rótulos 0..4 vs. 1..5.** O projeto usa `encode_rating` (labels 0..4) e converte para a escala de 1 a 5 estrelas somente no cálculo de MAE/RMSE (`compute_metrics`). O código original do XGB também treina com ratings 0..4 e converte as predições para 1..5 na agregação; a semântica do erro é a mesma (nota registrada na TAREFA 14). A diferença não altera o modelo: `XGBClassifier` ordena as classes e a numeração é apenas nominal.
+2. **Versão da biblioteca.** A réplica fixa `xgboost==3.4.1` (`requirements.txt`); a versão usada pelo código original não é informada. Pequenas diferenças numéricas são possíveis (mesma ressalva do `scikit-learn-intelex`, seção 3.2).
+3. **Paralelismo.** `random_state=42` fixo no estimador e `n_jobs=-1` no nível externo (CLI), com o estimador em `n_jobs=1` para que a busca e o refit por fold controlem o paralelismo — decisão igual à do Random Forest aprovado (reprodutibilidade por seed; o `n_jobs` não afeta o resultado).
+4. **Sem padronização das features, como no artigo** (mesma justificativa da seção 3.2, item 2).
+5. **`refit=False` na busca** e **IC de 95% com `n_folds − 1` graus de liberdade**, pelos mesmos motivos das seções 3.2 (item 5) e 3.3 — compare-se com o artigo pela média e pelo desvio.
+6. **Melhores hiperparâmetros do artigo não informados** (`ARTICLE_BEST_PARAMS` vazio), igual ao caso do Random Forest.
+
+### 4.3 Comparação complementar: XGBoost + TF-IDF vs. Regressão Logística
+
+*Preenchido após a execução de `scripts/train_xgboost_tfidf.py` na base completa (Task 5 do plano da TAREFA 14).*
+
+### 4.4 Resultado do protocolo completo
+
+*Preenchido após a execução completa de `--model xgboost` (Task 5): comparação com a Tabela 3, tabelas de métricas, holdout e "como reproduzir" com os tempos observados.*

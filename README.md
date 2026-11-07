@@ -271,6 +271,37 @@ Saídas (`<m>` = nome do modelo, `svm`):
 
 **Adicionar outro modelo (TAREFAS 12 a 14)**: crie um `ModelSpec` (como `SVM_SPEC` em `src/models/svm.py`) com o estimador, o grid e a linha da Tabela 3, e registre-o em `MODELS` no script.
 
+## Protocolo do artigo: XGBoost com as 58 features (RQ1)
+
+O XGBoost foi o melhor modelo do artigo nas três métricas da Tabela 3 (MAE, RMSE e AUC) e o escolhido para as RQs seguintes. O mesmo protocolo da seção anterior se aplica; muda o estimador (`XGBClassifier` de `src/models/xgboost.py`) e o grid, extraído da Tarefa 14:
+
+```bash
+python scripts/train_article_model.py --model xgboost --sample-n 2000   # modo rápido
+python scripts/train_article_model.py --model xgboost                   # protocolo completo
+python scripts/train_xgboost_tfidf.py                                   # comparação com TF-IDF
+```
+
+| Argumento | Padrão | Descrição |
+| --- | --- | --- |
+| `--model` | *(obrigatório)* | `xgboost` |
+| `--n-iter` | `300` | Candidatos do `RandomizedSearchCV` (no modo rápido use um valor menor, ex.: `--n-iter 20`) |
+
+Os demais argumentos (`--n-splits`, `--seed`, `--sample-n`, `--output-dir`, `--shuffle`, `--n-jobs`, `--train`, `--test`) são iguais aos da seção SVM.
+
+**Grid**: 9 dimensões — `n_estimators` (4 valores) × `learning_rate`, `max_depth`, `min_child_weight`, `gamma`, `subsample`, `colsample_bytree`, `reg_alpha`, `reg_lambda` (3 valores cada) = **8.748 combinações**, das quais `n_iter=300` sorteia 300 candidatos por fold. Cada fit de árvore `hist` é mais barato que um `SVC`, mas o corte total é maior que o do SVM; tempos medidos e comparação com a Tabela 3 em [`docs/diferencas.md`](docs/diferencas.md), seção 4.
+
+Saídas (`<m>` = `xgboost`):
+
+| Arquivo | Conteúdo |
+| --- | --- |
+| `results/metrics/<m>_rq1.json` | Configuração, melhores parâmetros, média, desvio-padrão e IC 95% de cada métrica, e comparação com a Tabela 3 |
+| `results/metrics/<m>_rq1_folds.csv` | Métricas de cada fold |
+| `results/metrics/<m>_rq1_holdout.json` | Treino em `train.csv`, avaliação em `test.csv` |
+| `results/figures/confusion_matrix_<m>.png` | Matriz de confusão agregada (predições fora-da-dobra dos 5 folds) |
+| `results/metrics/<m>_tfidf.json` | XGBoost sobre a matriz TF-IDF (Issue 6) e diferença para a Regressão Logística do baseline |
+
+`scripts/train_xgboost_tfidf.py` reutiliza o TF-IDF da Issue 6 (`ensure_tfidf`), faz uma busca curta (`n_iter=8`, 3 folds, RMSE) só no treino e avalia no teste oficial; a comparação com `baseline_logreg.json` só se grava na base completa. As decisões e diferenças em relação ao artigo estão em [`docs/diferencas.md`](docs/diferencas.md), seção 4.
+
 ## Testes automatizados
 
 Os testes ficam em `tests/` e usam [pytest](https://docs.pytest.org/). Com o ambiente virtual ativado, na raiz do repositório:
