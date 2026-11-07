@@ -1,7 +1,7 @@
 """XGBoost da RQ1 do artigo, com as 58 features, e comparação com TF-IDF.
 
 Parte 1 — protocolo do artigo (``XGB_SPEC``):
-    Grid idêntico ao descrito na TAREFA 14: 4 × 3^8 = 8.748 combinações
+    Grid idêntico ao descrito na TAREFA 14: 4 × 3^8 = 26.244 combinações
     (``n_estimators``, ``learning_rate``, ``max_depth``, ``min_child_weight``,
     ``gamma``, ``subsample``, ``colsample_bytree``, ``reg_alpha`` e
     ``reg_lambda``) amostradas por ``RandomizedSearchCV`` com ``n_iter=300``.
@@ -31,7 +31,7 @@ from src.preprocessing.embedding import (
 import numpy as np
 import sklearn
 
-# Grid da TAREFA 14 (RQ1): n_estimators(4) x as outras oito dimensões (3) = 8.748.
+# Grid da TAREFA 14 (RQ1): n_estimators(4) × as outras oito dimensões (3) = 26.244.
 PARAM_GRID: dict[str, list] = {
     "n_estimators": [100, 200, 300, 500],
     "learning_rate": [0.05, 0.10, 0.20],

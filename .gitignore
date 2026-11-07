@@ -66,6 +66,7 @@ results/figures/*
 !results/figures/confusion_matrix_logreg.png
 !results/figures/confusion_matrix_logreg_validation.png
 !results/figures/confusion_matrix_svm.png
+!results/figures/confusion_matrix_xgboost.png
 results/metrics/*
 !results/metrics/.gitkeep
 !results/metrics/baseline_logreg.json
@@ -76,6 +77,10 @@ results/metrics/*
 !results/metrics/svm_rq1_folds.csv
 !results/metrics/svm_rq1_holdout.json
 !results/metrics/svm_tfidf.json
+!results/metrics/xgboost_rq1.json
+!results/metrics/xgboost_rq1_folds.csv
+!results/metrics/xgboost_rq1_holdout.json
+!results/metrics/xgboost_tfidf.json
 
 # Execuções rápidas (--sample-n) nunca são versionadas
 results/sample/

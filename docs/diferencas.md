@@ -226,7 +226,7 @@ O XGBoost foi o melhor modelo do artigo nas três métricas da Tabela 3 (MAE 0,9
 | Features | 58 (`str_`, `pos_`, `synt_`, `lex_`, `conc_`, `twt_`, `sbj_`) | Igual; `categoria`, `text` e `rating` ficam fora; linhas com `text` vazio mantidas. |
 | Folds | `StratifiedKFold(5, shuffle=False)` por `categoria_rating` | Igual. |
 | Busca | `RandomizedSearchCV`, `n_iter=300`, RMSE, `random_state=42` | Igual. |
-| Grid | 9 dimensões (TAREFA 14), 8.748 combinações | Igual (exatamente os valores da TAREFA; teste fixa o grid). |
+| Grid | 9 dimensões (TAREFA 14), 26.244 combinações | Igual (exatamente os valores da TAREFA; teste fixa o grid). |
 | Métricas | MAE, RMSE, AUC (classes 4–5 positivas, sobre predições binárias) | Igual, mais F1 macro, acurácia e AUC de diagnóstico por `predict_proba`. |
 | Holdout | treino em `train.csv`, avaliação em `test.csv` | Igual, com os mesmos hiperparâmetros. |
 
@@ -243,12 +243,12 @@ O XGBoost foi o melhor modelo do artigo nas três métricas da Tabela 3 (MAE 0,9
 
 Nesta entrega também a comparação TF-IDF rodou em **modo rápido** (`--sample-n 2000`; 6:22 em 1 núcleo), e por isso **não há comparação com o baseline LR**: em `run_xgboost_tfidf` a comparação com `baseline_logreg.json` só é gravada na base completa (memória de `results/sample/` não é versionada).
 
-O que é possível comparar no cenário rápido é o XGBoost nas duas representações (configurações próximas, base de treino ligeiramente diferente: 1.587 linhas no protocolo de 58 features contra 2.000 no TF-IDF):
+O que é possível comparar no cenário rápido é o XGBoost nas duas representações — **ambas medidas no holdout** (treino no `train.csv` da amostra, avaliação no `test.csv` da amostra; treino ligeiramente diferente: 1.587 linhas no protocolo de 58 features contra 2.000 no TF-IDF):
 
-| Métrica | XGBoost, 58 features (holdout: treino 1.587 → teste 413) | XGBoost + TF-IDF (2.000 → 500) |
+| Métrica | XGBoost, 58 features (holdout: treino 1.587 → teste 413) | XGBoost + TF-IDF (holdout: 2.000 → 500) |
 | --- | ---: | ---: |
-| Acurácia | 0,3535 | 0,3740 |
-| F1 macro | 0,3485 | 0,3734 |
+| Acurácia | 0,3075 | 0,3740 |
+| F1 macro | 0,3005 | 0,3734 |
 | MAE (estrelas) | 1,0508 | 0,9420 |
 | RMSE (estrelas) | 1,4159 | 1,3409 |
 | AUC (predições binárias) | 0,7518 | 0,7267 |
@@ -259,7 +259,7 @@ O que é possível comparar no cenário rápido é o XGBoost nas duas representa
 
 **A execução completa não foi concluída nesta etapa.** Foi iniciada no notebook do responsável e interrompida ~40 min depois, por restrição de hardware (notebook portátil em uso, ventilação insuficiente para 9–10 núcleos sustentados por horas; ver seção 4.5). Nenhum artefato parcial foi gravado (a busca só grava ao fim). A entrega desta tarefa usa, portanto, o **modo rápido documentado pela própria issue**: `--sample-n 2000` com `n_iter` reduzido — o critério de conclusão da issue "execução completa com os 5 folds e o `n_iter` documentado" **não é atendido** e fica registrado aqui para a TAREFA 15 e para quem retomar.
 
-Melhores hiperparâmetros encontrados no modo rápido (`RandomizedSearchCV`, 20 candidatos × 5 folds sobre 1.587 linhas de treino por fold; `seed=42`): `n_estimators=300`, `max_depth=10`, `learning_rate=0.1`, `subsample=1.0`, `colsample_bytree=0.4`, `gamma=0.0`, `reg_alpha=0.1`, `reg_lambda=1`, `min_child_weight=1`. Para efeito de escala: no modo rápido a busca sorteia só 20 dos 8.748 candidatos do grid, os folds cortam 2.000 linhas e existe uma única semente de amostragem (`seed=42`); a execução completa avaliará 300 candidatos sobre a base inteira e pode ordenar os hiperparâmetros de forma diferente.
+Melhores hiperparâmetros encontrados no modo rápido (`RandomizedSearchCV`, 20 candidatos × 5 folds, ≈1.600 linhas de treino por fold e 1.587/413 no holdout; `seed=42`): `n_estimators=300`, `max_depth=10`, `learning_rate=0.1`, `subsample=1.0`, `colsample_bytree=0.4`, `gamma=0.0`, `reg_alpha=0.1`, `reg_lambda=1`, `min_child_weight=1`. Para efeito de escala: no modo rápido a busca amostra só 20 dos 26.244 candidatos do grid (≈0,08% do espaço), os folds cortam 2.000 linhas e existe uma única semente de amostragem (`seed=42`); a execução completa avaliará 300 candidatos sobre a base inteira e pode ordenar os hiperparâmetros de forma diferente.
 
 **Comparação com a Tabela 3 do artigo** — os números não devem ser lidos como reprodução:
 
@@ -292,4 +292,4 @@ python scripts/train_article_model.py --model xgboost        # ≈ 3 h de busca 
 python scripts/train_xgboost_tfidf.py                        # comparação com a reg logística, só na base completa
 ```
 
-Observação: a estimativa de ~3 h da execução completa é a calibragem dos dados (durante os primeiros ~40 min observados, 1500 fits em 9–10 núcleos); executada integralmente só na máquina que suportar o tempo; o que a execução completa gera (`results/metrics/xgboost_*.{json,csv}` + matriz de confusão versionada) sobrescreve o modo rápido ao concluir.
+Observação: a estimativa de ≈3 h da execução completa vem do ritmo observado nos ~40 min em que ela aqui rodou (≈19% dos ≈1.500 fits totais da busca — 300 candidatos × 5 folds — em 9–10 núcleos), não de 1.500 fits concluídos. Para a execução futura até o fim: as linhas de whitelist do `.gitignore` (acrescentadas neste branch) já permitem versionar `results/metrics/xgboost_*`; o modo rápido grava em `results/sample/`, então o comando completo (sem `--sample-n`) sobrescreve apenas os artefatos válidos de `results/metrics/`.

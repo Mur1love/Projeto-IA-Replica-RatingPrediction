@@ -71,7 +71,7 @@ artigo (ver seção 3.3 de `docs/diferencas.md`).
 ## XGBoost com as 58 features do artigo (RQ1) e comparação com TF-IDF
 
 Comando do protocolo: `python scripts/train_article_model.py --model xgboost` (base completa, 5 folds,
-`n_iter=300` sobre o grid de 8.748 combinações da TAREFA 14). **Nesta etapa apenas o modo rápido foi
+`n_iter=300` sobre o grid de 26.244 combinações da TAREFA 14). **Nesta etapa apenas o modo rápido foi
 executado** (restrição de hardware: `--sample-n 2000 --n-iter 20`, 33 s; e TF-IDF com `--sample-n 2000`,
 6:22) — os artefatos ficam em `results/sample/`, que **não é versionado**; por isso não há artefatos
 XGBoost versionados em `results/metrics/`. Números, limitações e justificativa em

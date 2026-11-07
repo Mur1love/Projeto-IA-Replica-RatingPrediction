@@ -288,7 +288,7 @@ python scripts/train_xgboost_tfidf.py                                   # compar
 
 Os demais argumentos (`--n-splits`, `--seed`, `--sample-n`, `--output-dir`, `--shuffle`, `--n-jobs`, `--train`, `--test`) são iguais aos da seção SVM.
 
-**Grid**: 9 dimensões — `n_estimators` (4 valores) × `learning_rate`, `max_depth`, `min_child_weight`, `gamma`, `subsample`, `colsample_bytree`, `reg_alpha`, `reg_lambda` (3 valores cada) = **8.748 combinações**, das quais `n_iter=300` sorteia 300 candidatos por fold. Cada fit de árvore `hist` é mais barato que um `SVC`, mas o corte total é maior que o do SVM (∼3 h estimadas de busca). **A entrega da TAREFA 14 usou o modo rápido** (limitação de hardware do notebook responsável); números, limitações e comando da execução completa em [`docs/diferencas.md`](docs/diferencas.md), seção 4.
+**Grid**: 9 dimensões — `n_estimators` (4 valores) × `learning_rate`, `max_depth`, `min_child_weight`, `gamma`, `subsample`, `colsample_bytree`, `reg_alpha`, `reg_lambda` (3 valores cada) = **26.244 combinações**, das quais `n_iter=300` sorteia 300 candidatos por fold. Cada fit de árvore `hist` é mais barato que um `SVC`, mas o corte total é maior que o do SVM (∼3 h estimadas de busca). **A entrega da TAREFA 14 usou o modo rápido** (limitação de hardware do notebook responsável); números, limitações e comando da execução completa em [`docs/diferencas.md`](docs/diferencas.md), seção 4.
 
 Saídas (`<m>` = `xgboost`):
 
