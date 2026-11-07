@@ -1,0 +1,31 @@
+{
+  "model": "random_forest",
+  "features": "tfidf (Issue 6)",
+  "params": {
+    "n_estimators": 100,
+    "min_samples_leaf": 2,
+    "max_features": "sqrt",
+    "max_depth": null,
+    "class_weight": "balanced"
+  },
+  "params_note": "RandomizedSearchCV curta; 3 folds; RMSE",
+  "protocol": "fit no train.csv e avaliação no test.csv oficial; TF-IDF ajustado só no treino",
+  "seed": 42,
+  "n_iter_requested": 1,
+  "n_candidates_evaluated": 1,
+  "sample_n": 5000,
+  "n_train": 5000,
+  "n_test": 1250,
+  "n_features": 28500,
+  "metrics": {
+    "mae": 0.8088,
+    "rmse": 1.2486793023030374,
+    "f1_macro": 0.44575104606456595,
+    "accuracy": 0.4568,
+    "auc": 0.7866666666666667,
+    "auc_scores": 0.8646546666666666
+  },
+  "fit_seconds": 8.957,
+  "sklearn_version": "1.8.0",
+  "comparison_with_baseline": null
+}
