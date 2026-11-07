@@ -1,12 +1,13 @@
 """Testes da configuração e integração do XGBoost na RQ1."""
 from dataclasses import replace
+import json
 
 import pytest
 from xgboost import XGBClassifier
 
 from src.models.article_protocol import load_article_data, run_article_protocol
 from src.models.xgboost import (
-    ARTICLE_TABLE3, PARAM_GRID, XGB_SPEC, build_xgboost,
+    ARTICLE_TABLE3, PARAM_GRID, XGB_SPEC, build_xgboost, run_xgboost_tfidf,
 )
 
 
@@ -54,3 +55,32 @@ def test_protocolo_xgboost_com_grid_reduzido(article_csvs):
     assert result.confusion.sum() == data.n_rows
     assert result.holdout["n_train"] == 240
     assert result.holdout["n_test"] == 80
+
+
+def _baseline_json(tmp_path):
+    """Baseline LR de mentira, como nos testes de CLI."""
+    base = tmp_path / "baseline.json"
+    base.write_text(json.dumps({"metrics_logreg": {
+        "accuracy": 0.5, "f1_macro": 0.5, "mae": 0.7, "rmse": 1.1}}), encoding="utf-8")
+    return base
+
+
+def test_xgboost_tfidf_com_comparacao_na_base_completa(article_csvs, tmp_path):
+    train_csv, test_csv = article_csvs
+    payload = run_xgboost_tfidf(
+        train_csv, test_csv, tmp_path / "proc", n_iter=4, baseline_json=_baseline_json(tmp_path)
+    )
+    assert payload["model"] == "xgboost"
+    assert payload["features"] == "tfidf (Issue 6)"
+    assert payload["params_note"]
+    assert set(payload["comparison_with_baseline"]["delta_xgb_minus_logreg"]) == {
+        "accuracy", "f1_macro", "mae", "rmse"}
+
+
+def test_xgboost_tfidf_modo_rapido_nao_compara(article_csvs, tmp_path):
+    train_csv, test_csv = article_csvs
+    payload = run_xgboost_tfidf(
+        train_csv, test_csv, tmp_path / "proc", sample_n=100, baseline_json=_baseline_json(tmp_path)
+    )
+    assert payload["sample_n"] == 100
+    assert payload["comparison_with_baseline"] is None

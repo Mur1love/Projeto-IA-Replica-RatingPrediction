@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from scripts import train_article_model, train_svm_tfidf
+from scripts import train_article_model, train_svm_tfidf, train_xgboost_tfidf
 
 
 def test_cli_svm_gera_os_artefatos(article_csvs, tmp_path):
@@ -113,6 +113,23 @@ def test_cli_svm_tfidf_com_comparacao_na_base_completa(article_csvs, tmp_path):
     payload = json.loads((out / "metrics" / "svm_tfidf.json").read_text(encoding="utf-8"))
     assert payload["params"] == {"kernel": "linear", "C": 1.0}
     assert set(payload["comparison_with_baseline"]["delta_svm_minus_logreg"]) == {
+        "accuracy", "f1_macro", "mae", "rmse"}
+
+
+def test_cli_xgboost_tfidf_com_comparacao(article_csvs, tmp_path):
+    train_csv, test_csv = article_csvs
+    base = tmp_path / "baseline.json"
+    base.write_text(json.dumps({"metrics_logreg": {
+        "accuracy": 0.5, "f1_macro": 0.5, "mae": 0.7, "rmse": 1.1}}), encoding="utf-8")
+    out = tmp_path / "saida"
+    rc = train_xgboost_tfidf.main([
+        "--train", str(train_csv), "--test", str(test_csv), "--processed-dir", str(tmp_path / "proc"),
+        "--output-dir", str(out), "--baseline-json", str(base),
+    ])
+    assert rc == 0
+    payload = json.loads((out / "metrics" / "xgboost_tfidf.json").read_text(encoding="utf-8"))
+    assert payload["params_note"]
+    assert set(payload["comparison_with_baseline"]["delta_xgb_minus_logreg"]) == {
         "accuracy", "f1_macro", "mae", "rmse"}
 
 
