@@ -4,6 +4,8 @@
 numpy==2.5.3
 pandas==3.0.6
 scikit-learn==1.9.1
+# XGBoost da RQ1 (Issue #25 / TAREFA 14).
+xgboost==3.4.1
 scipy==1.18.1
 matplotlib==3.11.2
 jupyter==1.1.1

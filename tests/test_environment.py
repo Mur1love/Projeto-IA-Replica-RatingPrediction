@@ -20,6 +20,7 @@ MAIN_DEPENDENCIES = [
     "matplotlib",
     "jupyter",
     "pytest",
+    "xgboost",
     "nltk",
 ]
 
