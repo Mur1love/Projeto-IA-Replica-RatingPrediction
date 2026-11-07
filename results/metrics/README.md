@@ -67,3 +67,15 @@ Leitura das métricas: `auc` é a AUC do artigo (classes 4–5 estrelas positiva
 binárias); `auc_scores` é um diagnóstico a partir de `decision_function`. MAE e RMSE estão na escala
 de 1 a 5 estrelas. O IC de 95% usa `t` com 4 graus de liberdade e é mais largo que o publicado no
 artigo (ver seção 3.3 de `docs/diferencas.md`).
+
+## XGBoost com as 58 features do artigo (RQ1) e comparação com TF-IDF
+
+Comando do protocolo: `python scripts/train_article_model.py --model xgboost` (base completa, 5 folds,
+`n_iter=300` sobre o grid de 8.748 combinações da TAREFA 14). **Nesta etapa apenas o modo rápido foi
+executado** (restrição de hardware: `--sample-n 2000 --n-iter 20`, 33 s; e TF-IDF com `--sample-n 2000`,
+6:22) — os artefatos ficam em `results/sample/`, que **não é versionado**; por isso não há artefatos
+XGBoost versionados em `results/metrics/`. Números, limitações e justificativa em
+[`docs/diferencas.md`](../../docs/diferencas.md), seção 4; a comparação com a Tabela 3 do artigo e os
+artefatos oficiais ficam versionados apenas quando a execução completa for concluída
+(`results/metrics/xgboost_rq1{,_folds.csv,_holdout}.json`, `xgboost_tfidf.json` e
+`../figures/confusion_matrix_xgboost.png`).

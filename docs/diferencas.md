@@ -214,7 +214,7 @@ python scripts/train_svm_tfidf.py                                   # SVM + TF-I
 
 ## 4. XGBoost com as 58 features (RQ1)
 
-O XGBoost foi o melhor modelo do artigo nas três métricas da Tabela 3 (MAE 0,9499 ± 0,0047; RMSE 1,3721 ± 0,0055; AUC 0,7390 ± 0,0046) e o escolhido para as RQs seguintes; por isso a TAREFA 14 o replica. Parte do texto abaixo refere-se à execução completa que é rodada no escopo da TAREFA 14 e cujos números finais preenchem as subseções 4.3 e 4.4.
+O XGBoost foi o melhor modelo do artigo nas três métricas da Tabela 3 (MAE 0,9499 ± 0,0047; RMSE 1,3721 ± 0,0055; AUC 0,7390 ± 0,0046) e o escolhido para as RQs seguintes; por isso a TAREFA 14 o replica. Nesta etapa a execução usou o **modo rápido documentado pela própria issue** (restrição de hardware da máquina responsável); o protocolo completo não rodou até o fim — contexto, números e comando de reprodução estão nas subseções 4.4 e 4.5.
 
 ### 4.1 O que foi replicado
 
@@ -239,10 +239,57 @@ O XGBoost foi o melhor modelo do artigo nas três métricas da Tabela 3 (MAE 0,9
 5. **`refit=False` na busca** e **IC de 95% com `n_folds − 1` graus de liberdade**, pelos mesmos motivos das seções 3.2 (item 5) e 3.3 — compare-se com o artigo pela média e pelo desvio.
 6. **Melhores hiperparâmetros do artigo não informados** (`ARTICLE_BEST_PARAMS` vazio), igual ao caso do Random Forest.
 
-### 4.3 Comparação complementar: XGBoost + TF-IDF vs. Regressão Logística
+### 4.3 Comparação complementar: representações sobre TF-IDF (modo rápido)
 
-*Preenchido após a execução de `scripts/train_xgboost_tfidf.py` na base completa (Task 5 do plano da TAREFA 14).*
+Nesta entrega também a comparação TF-IDF rodou em **modo rápido** (`--sample-n 2000`; 6:22 em 1 núcleo), e por isso **não há comparação com o baseline LR**: em `run_xgboost_tfidf` a comparação com `baseline_logreg.json` só é gravada na base completa (memória de `results/sample/` não é versionada).
 
-### 4.4 Resultado do protocolo completo
+O que é possível comparar no cenário rápido é o XGBoost nas duas representações (configurações próximas, base de treino ligeiramente diferente: 1.587 linhas no protocolo de 58 features contra 2.000 no TF-IDF):
 
-*Preenchido após a execução completa de `--model xgboost` (Task 5): comparação com a Tabela 3, tabelas de métricas, holdout e "como reproduzir" com os tempos observados.*
+| Métrica | XGBoost, 58 features (holdout: treino 1.587 → teste 413) | XGBoost + TF-IDF (2.000 → 500) |
+| --- | ---: | ---: |
+| Acurácia | 0,3535 | 0,3740 |
+| F1 macro | 0,3485 | 0,3734 |
+| MAE (estrelas) | 1,0508 | 0,9420 |
+| RMSE (estrelas) | 1,4159 | 1,3409 |
+| AUC (predições binárias) | 0,7518 | 0,7267 |
+
+**Leitura, com ressalvas:** no modo rápido, TF-IDF vence em MAE (−0,11 estrela), RMSE, acurácia e F1; a AUC binária vai para as 58 features. A direção é a mesma que a comparação completa do SVM (seção 3.5), em que TF-IDF trouxe ganhos claros — mas aqui os tamanhos de treino divergem e nada foi testado estatisticamente, então o resultado é **indicativo**, não conclusivo. Na base completa vale rodar `python scripts/train_xgboost_tfidf.py` (a comparação com a LR é gravada só nesse caso).
+
+### 4.4 Resultado do protocolo em modo rápido (execução deste repositório)
+
+**A execução completa não foi concluída nesta etapa.** Foi iniciada no notebook do responsável e interrompida ~40 min depois, por restrição de hardware (notebook portátil em uso, ventilação insuficiente para 9–10 núcleos sustentados por horas; ver seção 4.5). Nenhum artefato parcial foi gravado (a busca só grava ao fim). A entrega desta tarefa usa, portanto, o **modo rápido documentado pela própria issue**: `--sample-n 2000` com `n_iter` reduzido — o critério de conclusão da issue "execução completa com os 5 folds e o `n_iter` documentado" **não é atendido** e fica registrado aqui para a TAREFA 15 e para quem retomar.
+
+Melhores hiperparâmetros encontrados no modo rápido (`RandomizedSearchCV`, 20 candidatos × 5 folds sobre 1.587 linhas de treino por fold; `seed=42`): `n_estimators=300`, `max_depth=10`, `learning_rate=0.1`, `subsample=1.0`, `colsample_bytree=0.4`, `gamma=0.0`, `reg_alpha=0.1`, `reg_lambda=1`, `min_child_weight=1`. Para efeito de escala: no modo rápido a busca sorteia só 20 dos 8.748 candidatos do grid, os folds cortam 2.000 linhas e existe uma única semente de amostragem (`seed=42`); a execução completa avaliará 300 candidatos sobre a base inteira e pode ordenar os hiperparâmetros de forma diferente.
+
+**Comparação com a Tabela 3 do artigo** — os números não devem ser lidos como reprodução:
+
+| Métrica | Artigo (Tabela 3) | Réplica *modo rápido* | Δ da média |
+| --- | --- | --- | ---: |
+| MAE | 0,9499 ± 0,0047 | 1,0215 ± 0,0327 | +0,0716 |
+| RMSE | 1,3721 ± 0,0055 | 1,4337 ± 0,0490 | +0,0616 |
+| AUC | 0,7390 ± 0,0046 | 0,7204 ± 0,0306 | −0,0186 |
+
+Outras métricas do modo rápido (não constam na Tabela 3): F1 macro 0,3485 ± 0,0178; acurácia 0,3535 ± 0,0153. **Holdout do modo rápido** (treino 1.587 → teste 413, com os hiperparâmetros da busca): MAE 1,0508; RMSE 1,4159; AUC 0,7518.
+
+**Leitura:**
+
+- **O desvio-padrão entre folds no modo rápido (≈0,03–0,05) é 7–9× o do artigo (≈0,005)** — é o esperado com 1/26 dos dados por treino (1.587 contra ≈41.172). Toda diferença em relação à Tabela 3 está dentro do intervalo de confiança do modo rápido; isto não replica nem refuta o artigo.
+- MAE e RMSE pioraram de modo consistente (≈ +0,06–0,07 estrelas), direção coerente com menos dados; a AUC caiu apenas −0,019.
+- A AUC acima é a do artigo (predições binárias); a AUC de diagnóstico por `predict_proba` e as métricas de cada fold estão nos JSON do modo rápido.
+
+Artefatos do modo rápido (não versionados): `results/sample/metrics/xgboost_rq1.json`, `xgboost_rq1_folds.csv`, `xgboost_rq1_holdout.json`, `xgboost_tfidf.json` e `../figures/confusion_matrix_xgboost.png`.
+
+### 4.5 Como reproduzir
+
+```bash
+python scripts/train_article_model.py --model xgboost --sample-n 2000 --n-iter 20 --output-dir results/sample
+# modo rápido usado nesta etapa: 33 s em ~9 núcleos
+python scripts/train_xgboost_tfidf.py --sample-n 2000 --output-dir results/sample
+# TF-IDF em modo rápido: 6:22 em 1 núcleo
+
+# Execução completa (protocolo do artigo; NÃO executada integralmente nesta etapa):
+python scripts/train_article_model.py --model xgboost        # ≈ 3 h de busca (estimada) + ~2 min de avaliação
+python scripts/train_xgboost_tfidf.py                        # comparação com a reg logística, só na base completa
+```
+
+Observação: a estimativa de ~3 h da execução completa é a calibragem dos dados (durante os primeiros ~40 min observados, 1500 fits em 9–10 núcleos); executada integralmente só na máquina que suportar o tempo; o que a execução completa gera (`results/metrics/xgboost_*.{json,csv}` + matriz de confusão versionada) sobrescreve o modo rápido ao concluir.
