@@ -28,20 +28,19 @@ from src.models.article_protocol import (  # noqa: E402
     save_article_results,
 )
 from src.models.svm import SVM_SPEC  # noqa: E402
-from src.models.random_forest import RANDOM_FOREST_SPEC  # noqa: E402
 
 logger = logging.getLogger("train_article_model")
 
 RAIZ = Path(__file__).resolve().parents[1]
 
 # TAREFAS 12 a 14: importe o ModelSpec do novo modelo e acrescente aqui.
-MODELS = {spec.name: spec for spec in (SVM_SPEC, RANDOM_FOREST_SPEC)}
+MODELS = {spec.name: spec for spec in (SVM_SPEC,)}
 
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Protocolo do artigo (RQ1) com as 58 features.")
     p.add_argument("--model", required=True, choices=sorted(MODELS), help="modelo a avaliar")
-    p.add_argument("--n-iter", type=int, default=None,
+    p.add_argument("--n-iter", type=int, default=DEFAULT_N_ITER,
                    help=f"candidatos do RandomizedSearchCV (padrão: {DEFAULT_N_ITER})")
     p.add_argument("--n-splits", type=int, default=DEFAULT_N_SPLITS,
                    help=f"folds estratificados (padrão: {DEFAULT_N_SPLITS})")
@@ -72,9 +71,6 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--sample-n deve ser positivo")
 
     spec = MODELS[args.model]
-    n_iter = args.n_iter
-    if n_iter is None:
-        n_iter = 10 if args.model == "random_forest" and args.sample_n else DEFAULT_N_ITER
     out_dir = args.output_dir or (RAIZ / "results" / ("sample" if args.sample_n else ""))
 
     try:
@@ -86,7 +82,7 @@ def main(argv: list[str] | None = None) -> int:
             # e a contagem real fica registrada em n_candidates_evaluated.
             warnings.filterwarnings("ignore", message="The total space of parameters")
             result = run_article_protocol(
-                spec, data, n_iter=n_iter, n_splits=args.n_splits, seed=args.seed,
+                spec, data, n_iter=args.n_iter, n_splits=args.n_splits, seed=args.seed,
                 shuffle=args.shuffle, n_jobs=args.n_jobs,
             )
     except ValueError as exc:  # amostra pequena demais, colunas inesperadas etc.
@@ -95,7 +91,7 @@ def main(argv: list[str] | None = None) -> int:
     paths = save_article_results(result, data, out_dir)
 
     logger.info("Candidatos avaliados: %d (n_iter pedido: %d) | melhores parâmetros: %s",
-                result.n_candidates, n_iter, result.best_params)
+                result.n_candidates, args.n_iter, result.best_params)
     for metric in ("mae", "rmse", "auc"):
         agg = result.aggregate[metric]
         ref = spec.article_reference.get(metric)
