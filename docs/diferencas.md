@@ -11,6 +11,7 @@ Este documento registra onde a réplica se afasta do artigo *Rating Prediction i
 | Métricas | MAE, RMSE e AUC | Acurácia, F1 macro, MAE e RMSE no baseline TF-IDF; MAE, RMSE, F1 macro, acurácia e AUC no protocolo do artigo | A AUC está implementada no harness do protocolo do artigo (seção 3), não no baseline LR. |
 | Representação no SVM (RQ1) | 58 features manuais | SVM com as 58 features (seção 3) e, como comparação complementar, SVM sobre TF-IDF | O SVM com as 58 features é a reprodução do artigo; o SVM com TF-IDF é um experimento próprio. |
 | IC de 95% | IC calculado com a linha da média incluída (6 valores, 5 g.l.) | IC calculado só entre os 5 folds (5 valores, 4 g.l.) | O IC publicado é cerca de 24% mais estreito. Seção 3.3. |
+| Gradient Boosting (RQ1) | Grid de 2160 combinações, `n_iter=300` | Mesmo grid e protocolo; `n_iter` **reduzido**, e nesta etapa só o **modo rápido** foi executado (300 candidatos não cabem em tempo razoável) | Seções 5.2 e 5.3. |
 | Duplicatas treino/teste | Não discutidas no artigo | 280 combinações (`categoria`, `text`, `rating`) aparecem nos dois splits | Herdado do split oficial; pode inflar as métricas. Ver `data/README.md`. |
 
 ## 2. Normalização de texto: com e sem
@@ -293,3 +294,85 @@ python scripts/train_xgboost_tfidf.py                        # comparação com 
 ```
 
 Observação: a estimativa de ≈3 h da execução completa vem do ritmo observado nos ~40 min em que ela aqui rodou (≈19% dos ≈1.500 fits totais da busca — 300 candidatos × 5 folds — em 9–10 núcleos), não de 1.500 fits concluídos. Para a execução futura até o fim: as linhas de whitelist do `.gitignore` (acrescentadas neste branch) já permitem versionar `results/metrics/xgboost_*`; o modo rápido grava em `results/sample/`, então o comando completo (sem `--sample-n`) sobrescreve apenas os artefatos válidos de `results/metrics/`.
+
+## 5. Gradient Boosting com as 58 features (RQ1)
+
+O Gradient Boosting (GBT) ficou entre os melhores modelos do artigo, com desempenho estatisticamente próximo do XGBoost (Tabela 3: MAE 0,9612 ± 0,0061; RMSE 1,3727 ± 0,0051; AUC 0,7318 ± 0,0058); por isso a TAREFA 13 o replica com o mesmo harness do SVM, do Random Forest e do XGBoost. Nesta etapa a execução usou o **modo rápido documentado** (seção 5.3), como na seção 4 do XGBoost; a execução completa não foi realizada.
+
+### 5.1 O que foi replicado
+
+`scripts/train_article_model.py --model gradient_boosting` aplica o protocolo da seção 3 ao `GradientBoostingClassifier`:
+
+| Item | Artigo | Réplica |
+| --- | --- | --- |
+| Dados | `train.csv` + `test.csv` concatenados (51.465 linhas) | Igual: **o teste participa da validação cruzada**. |
+| Features | 58 (`str_`, `pos_`, `synt_`, `lex_`, `conc_`, `twt_`, `sbj_`) | Igual; `categoria`, `text` e `rating` ficam fora; linhas com `text` vazio mantidas. |
+| Folds | `StratifiedKFold(5, shuffle=False)` por `categoria_rating` | Igual. |
+| Busca | `RandomizedSearchCV`, `n_iter=300`, RMSE, `random_state=42` | Igual no padrão; `--n-iter` é configurável (ver 5.2, item 1). |
+| Grid | `n_estimators` ∈ {100, 200, 300, 500, 1000}, `learning_rate` ∈ {0,001; 0,01; 0,05; 0,1}, `max_depth` ∈ {3, 5, 10}, `min_samples_split` ∈ {5, 10, 15}, `min_samples_leaf` ∈ {1, 2, 4}, `max_features` ∈ {sqrt, log2, 0,5, None} | Igual: 5 × 4 × 3 × 3 × 3 × 4 = **2160 combinações** (o teste fixa o grid). |
+| Métricas | MAE, RMSE, AUC (classes 4–5 positivas, sobre predições binárias) | Igual, mais F1 macro, acurácia e AUC de diagnóstico por probabilidades. |
+| Holdout | treino em `train.csv`, avaliação em `test.csv` | Igual, com os mesmos hiperparâmetros. |
+
+### 5.2 Diferenças em relação ao artigo
+
+1. **`n_iter` menor.** O grid tem 2160 combinações e o artigo sorteou 300. Cada candidato exige 5 ajustes (um por fold), e o GBT cresce uma árvore por classe a cada iteração de boosting. Em uma medição exploratória (1 núcleo, 8 mil linhas, não versionada), uma combinação leve (`max_depth=3`, `max_features="sqrt"`, 100 árvores) levou ≈ 3 s e uma pesada (`max_depth=10`, `max_features=None`, 100 árvores) ≈ 61 s; extrapolando para 41 mil linhas e 1000 árvores, uma única combinação pesada passa de 40 minutos. Por isso `--n-iter` é configurável (padrão 300, como no artigo) e a execução usa um valor menor. O valor usado fica registrado na seção 5.3 e nos campos `n_iter_requested` e `n_candidates_evaluated` do JSON. Com poucos candidatos, a busca pode não alcançar a região do grid encontrada pelo artigo, e as médias podem ficar um pouco piores que as publicadas.
+2. **Modo rápido com `n_iter=5`.** Com `--sample-n`, o padrão do GBT é 5 candidatos (o Random Forest usa 10; o SVM mantém 300 porque seu grid só tem 16 combinações). Os números do modo rápido não são comparáveis ao artigo.
+3. **AUC de diagnóstico por probabilidades.** O harness prefere `decision_function` a `predict_proba`, e o GBT multiclasse tem as duas: a primeira devolve log-odds por classe. A TAREFA pede a AUC com probabilidades (P(4 estrelas) + P(5 estrelas)). Para isso o estimador é `GradientBoostingProbaScores`, uma subclasse que declara `diagnostic_from_proba = True`, e `diagnostic_scores` (`src/models/article_protocol.py`) passou a respeitar esse atributo. As previsões são idênticas às do `GradientBoostingClassifier` padrão, então MAE, RMSE, F1, acurácia e a AUC do artigo (predições binárias) não mudam. SVM, Random Forest e XGBoost não declaram o atributo e se comportam como antes (coberto por `tests/test_gradient_boosting.py`).
+4. **Sem padronização das features, como no artigo** (mesma justificativa da seção 3.2, item 2).
+5. **`refit=False` na busca** e **IC de 95% com `n_folds − 1` graus de liberdade**, pelos mesmos motivos das seções 3.2 (item 5) e 3.3: compare-se com o artigo pela média e pelo desvio.
+6. **Melhores hiperparâmetros do artigo não informados** (`ARTICLE_BEST_PARAMS` vazio), igual ao Random Forest e ao XGBoost.
+
+### 5.3 Resultado do protocolo em modo rápido (execução deste repositório)
+
+**A execução completa não foi realizada nesta etapa.** Os resultados abaixo vêm do **modo rápido** do protocolo (`--sample-n 2000`, `n_iter=5`), o mesmo critério adotado para o XGBoost (seção 4.4). O motivo é o custo de tempo: cada candidato do grid completo exige 5 ajustes em ≈ 41 mil linhas, e uma única combinação pesada leva dezenas de minutos (seção 5.2, item 1). Os números **não devem ser lidos como reprodução da Tabela 3**.
+
+Melhores hiperparâmetros encontrados no modo rápido (`RandomizedSearchCV`, 5 candidatos × 5 folds, ≈ 1.600 linhas de treino por fold e 1.587/413 no holdout; `seed=42`): `n_estimators=100`, `max_depth=5`, `learning_rate=0.01`, `min_samples_split=10`, `min_samples_leaf=1`, `max_features=None`. Uma taxa de aprendizado de 0,01 com apenas 100 árvores é uma configuração de pouco ajuste: reflete a amostra minúscula e o sorteio de poucos candidatos, e **não é uma conclusão sobre os melhores hiperparâmetros**.
+
+**Comparação com a Tabela 3 do artigo** (média ± desvio-padrão entre os 5 folds):
+
+| Métrica | Artigo (Tabela 3) | Réplica *modo rápido* | Δ da média |
+| --- | --- | --- | ---: |
+| MAE | 0,9612 ± 0,0061 | 1,0400 ± 0,0549 | +0,0788 |
+| RMSE | 1,3727 ± 0,0051 | 1,4527 ± 0,0584 | +0,0800 |
+| AUC | 0,7318 ± 0,0058 | 0,7072 ± 0,0133 | −0,0246 |
+
+IC de 95% do modo rápido: MAE [0,9718; 1,1082], RMSE [1,3801; 1,5252], AUC [0,6907; 0,7237]. **Holdout do modo rápido** (treino 1.587 → teste 413, com os hiperparâmetros da busca): MAE 1,0726; RMSE 1,4901; AUC 0,7422. A acurácia, o F1 macro e a AUC de diagnóstico por probabilidades (`auc_scores`) de cada fold estão nos JSON do modo rápido.
+
+**Leitura:**
+
+- **O desvio-padrão entre folds no modo rápido é muito maior que o do artigo**: 9 vezes no MAE, 11 vezes no RMSE e 2,3 vezes na AUC. É o esperado com cerca de 1/26 dos dados por treino.
+- **As médias do artigo ficam um pouco fora do IC de 95% do modo rápido nas três métricas** (por exemplo, MAE 0,9612 contra um limite inferior de 0,9718). Isso é diferente do XGBoost, em que as diferenças couberam no IC. A direção é coerente com treinar em muito menos dados e com apenas 5 candidatos (a busca pode não ter chegado à região do grid encontrada pelo artigo); não indica erro no protocolo, mas também não permite afirmar equivalência com o artigo.
+- O holdout tem AUC (0,7422) acima da média dos folds (0,7072), mas é uma única divisão com 413 linhas de teste; não deve ser comparado com a média dos folds.
+
+Artefatos do modo rápido (não versionados): `results/sample/metrics/gradient_boosting_rq1.json`, `gradient_boosting_rq1_folds.csv`, `gradient_boosting_rq1_holdout.json`, `gradient_boosting_tfidf.json` e `results/sample/figures/confusion_matrix_gradient_boosting.png`.
+
+### 5.4 Comparação complementar: GBT com TF-IDF (modo rápido)
+
+`scripts/train_gradient_boosting_tfidf.py` treina o GBT sobre a matriz TF-IDF da Issue 6 (mesmo vetorizador e mesmo split oficial treino → teste do baseline). Os hiperparâmetros vêm de uma **busca curta feita só no `train.csv`** (`RandomizedSearchCV`, 6 candidatos, 3 folds, RMSE, grid reduzido em `TFIDF_GBT_GRID`); o teste só é usado na avaliação final. O grid é menor que o do artigo porque o TF-IDF tem ≈ 28 mil colunas esparsas, e `max_features=None` com árvores profundas seria impraticável. A opção `--no-search` usa parâmetros fixos (100 árvores, profundidade 3, `max_features="sqrt"`); em um teste exploratório, com validação interna de 20% do treino (não versionado), essa configuração ficou claramente subajustada (RMSE ≈ 1,41, contra ≈ 1,18 com 300 árvores de profundidade 5), e por isso a busca é o padrão.
+
+Esta entrega rodou em **modo rápido** (`--sample-n 2000`, 36,0 s com `--n-jobs -1`; 2.000 linhas de treino, 500 de teste, 28.500 colunas) e, por isso, **não há comparação com o baseline LR**: a comparação com `baseline_logreg.json` só é gravada na base completa. Melhores hiperparâmetros da busca curta: `n_estimators=200`, `max_depth=8`, `learning_rate=0.1`, `max_features=0.05`. Métricas no teste da amostra: acurácia 0,3860; F1 macro 0,3839; MAE 0,9260; RMSE 1,3364; AUC (artigo) 0,7333; AUC por probabilidades 0,8316.
+
+O que é possível comparar no cenário rápido é o GBT nas duas representações, **ambas medidas no holdout** (treinos de tamanhos ligeiramente diferentes: 1.587 linhas nas 58 features contra 2.000 no TF-IDF):
+
+| Métrica | GBT, 58 features (treino 1.587 → teste 413) | GBT + TF-IDF (treino 2.000 → teste 500) |
+| --- | ---: | ---: |
+| MAE (estrelas) | 1,0726 | 0,9260 |
+| RMSE (estrelas) | 1,4901 | 1,3364 |
+| AUC (predições binárias) | 0,7422 | 0,7333 |
+
+**Leitura, com ressalvas:** no modo rápido, o TF-IDF vence em MAE e RMSE (cerca de −0,15 estrela em ambos) e a AUC binária vai para as 58 features (+0,009). É a mesma direção observada para o XGBoost no modo rápido (seção 4.3). Mas são uma única divisão por representação, com 413 e 500 linhas de teste, treinos de tamanhos diferentes e sem teste estatístico; trate como indício, não como conclusão. A AUC por probabilidades (0,8316) é um diagnóstico diferente da AUC do artigo e não se compara com a Tabela 3.
+
+**A comparação com a Regressão Logística (TAREFA 15) não foi realizada nesta etapa**; ela exige a execução na base completa (seção 5.5). Ressalvas a registrar junto dos números dessa execução: o TF-IDF remove 1 linha de `text` vazio por split, enquanto o GBT com 58 features usa todas; a busca do GBT é curta; e não há teste estatístico da diferença.
+
+### 5.5 Como reproduzir
+
+```bash
+python scripts/train_article_model.py --model gradient_boosting --sample-n 2000   # modo rápido (n_iter=5), usado nesta etapa
+python scripts/train_gradient_boosting_tfidf.py --sample-n 2000                   # TF-IDF em modo rápido: 36 s
+
+# Execução completa (protocolo do artigo; NÃO executada nesta etapa):
+python scripts/train_article_model.py --model gradient_boosting --n-iter 20       # n_iter reduzido
+python scripts/train_gradient_boosting_tfidf.py                                   # comparação com a regressão logística, só na base completa
+```
+
+Observação: a duração da execução completa depende do `--n-iter` e dos núcleos. Uma estimativa grosseira, por extrapolação de medições em 1.600 e 8 mil linhas (não de uma execução completa), é da ordem de 20 minutos por candidato em 1 núcleo; divida pelo número de núcleos e some o reajuste por fold e o holdout.
