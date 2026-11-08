@@ -16,7 +16,7 @@ Projeto da disciplina de Inteligência Artificial dedicado à réplica do artigo
 
 O objetivo deste projeto é reproduzir a metodologia e os experimentos apresentados no artigo de referência. A tarefa consiste em prever a nota, de 1 a 5 estrelas, atribuída por usuários da Amazon a partir apenas do texto das avaliações.
 
-A réplica investigará a extração de características textuais e a aplicação de modelos de classificação, com atenção especial aos seguintes pontos:
+A réplica investiga a extração de características textuais e a aplicação de modelos de classificação, com atenção especial aos seguintes pontos:
 
 - comparação entre SVM, Random Forest, Logistic Regression, Gradient Boosting e XGBoost;
 - avaliação de diferentes grupos de características textuais, como características léxicas, sintáticas, estruturais e de classe gramatical;
@@ -32,6 +32,30 @@ O artigo utilizado como base está disponível localmente na raiz deste reposit�
 
 - [`RatingPredictionInBrazilianPortugueseReviews.pdf`](RatingPredictionInBrazilianPortugueseReviews.pdf)
 
+## Documentação
+
+A documentação consolidada do projeto está em:
+
+- [`docs/documentacao.md`](docs/documentacao.md): contexto, dados, features, arquitetura, pré-processamento, protocolo, algoritmos, métricas, resultados, diferenças e reprodução;
+- [`docs/features.md`](docs/features.md): descrição detalhada das 58 features textuais;
+- [`docs/diferencas.md`](docs/diferencas.md): decisões e diferenças em relação ao artigo;
+- [`data/README.md`](data/README.md): origem, splits e preparação dos dados;
+- [`results/metrics/README.md`](results/metrics/README.md): inventário dos resultados.
+
+### Estado atual dos experimentos
+
+| Experimento | Estado | Onde estão os resultados |
+| --- | --- | --- |
+| Baseline TF-IDF + Regressão Logística | Completo | `results/metrics/baseline_logreg*.json` |
+| Normalização textual (7 variantes) | Completo | `results/metrics/normalization_comparison*.json` e `docs/diferencas.md` §2 |
+| SVM com as 58 features (RQ1) | **Completo**; reproduz a Tabela 3 | `results/metrics/svm_rq1*.json` |
+| Random Forest com as 58 features (RQ1) | Parcial: amostra de 5.000 linhas, 1 candidato | `results/metrics/random_forest_rq1*.json` e `docs/diferencas.md` §6 |
+| XGBoost com as 58 features (RQ1) | Parcial: modo rápido (2.000 linhas) | `results/sample/` e `docs/diferencas.md` §4 |
+| Gradient Boosting com as 58 features (RQ1) | Parcial: modo rápido (2.000 linhas) | `results/sample/` e `docs/diferencas.md` §5 |
+| PP2, PP3 e PP4 | Pendentes | — |
+
+> **Importante:** apenas o SVM foi executado no protocolo completo do artigo. Os números de Random Forest, XGBoost e Gradient Boosting não são comparáveis à Tabela 3. Veja a consolidação em [`docs/diferencas.md`](docs/diferencas.md), seção 7, e em [`docs/documentacao.md`](docs/documentacao.md), seção 10.
+
 ## Estrutura do repositório
 
 ```text
@@ -41,57 +65,64 @@ O artigo utilizado como base está disponível localmente na raiz deste reposit�
 │   │   └── task.md
 │   └── pull_request_template.md
 ├── data/
-│   ├── raw/
-│   │   └── .gitkeep
-│   ├── processed/
-│   │   └── .gitkeep
+│   ├── raw/                      # train.csv, test.csv, validation.csv (não versionados)
+│   ├── processed/                # TF-IDF e artefatos gerados (não versionados)
 │   └── README.md
+├── docs/
+│   ├── documentacao.md           # Documentação consolidada do projeto
+│   ├── features.md               # As 58 features em detalhe
+│   └── diferencas.md             # Decisões e diferenças em relação ao artigo
 ├── notebooks/
-│   └── .gitkeep
-├── scripts/
-│   └── check_environment.py
-├── src/
-│   ├── data/
-│   │   └── __init__.py
-│   ├── preprocessing/
-│   │   └── __init__.py
-│   ├── models/
-│   │   └── __init__.py
-│   ├── evaluation/
-│   │   └── __init__.py
-│   ├── utils/
-│   │   └── __init__.py
-│   └── __init__.py
-├── tests/
-│   ├── .gitkeep
-│   ├── __init__.py
-│   └── test_environment.py
+│   ├── auditoria_dados.ipynb
+│   ├── baseline_logreg_colab.ipynb
+│   └── baseline_logreg_validation_colab.ipynb
 ├── results/
-│   ├── figures/
-│   │   └── .gitkeep
-│   └── metrics/
-│       └── .gitkeep
-├── RatingPredictionInBrazilianPortugueseReviews.pdf
+│   ├── figures/                  # Matrizes de confusão (PNG)
+│   ├── metrics/                  # JSON/CSV versionados
+│   └── sample/                   # Execuções rápidas (não versionado)
+├── scripts/
+│   ├── check_environment.py
+│   ├── create_validation_split.py
+│   ├── train_baseline.py
+│   ├── train_baseline_validation.py
+│   ├── compare_normalization.py
+│   ├── train_article_model.py
+│   ├── train_svm_tfidf.py
+│   ├── train_random_forest_tfidf.py
+│   ├── train_xgboost_tfidf.py
+│   └── train_gradient_boosting_tfidf.py
+├── src/
+│   ├── data/splitting.py
+│   ├── preprocessing/{normalization,encoding,embedding}.py
+│   ├── models/{article_protocol,baseline,svm,random_forest,xgboost,gradient_boosting}.py
+│   ├── evaluation/{metrics,plots}.py
+│   └── utils/
+├── tests/                        # Testes automatizados (pytest)
+├── .coveragerc
 ├── .gitignore
-├── README.md
+├── pytest.ini
 ├── requirements.txt
-└── run_baseline.py
+├── run_baseline.py               # Pipeline fim a fim do baseline
+├── README.md
+└── RatingPredictionInBrazilianPortugueseReviews.pdf
 ```
 
 ### Finalidade dos diretórios
 
 - `data/raw/`: datasets originais, sem alterações. Os arquivos de dados não devem ser versionados por padrão.
 - `data/processed/`: dados gerados por limpeza, transformação ou preparação.
+- `docs/`: documentação consolidada, descrição das 58 features e registro de diferenças.
 - `notebooks/`: análises exploratórias, experimentos e registros de investigação em Jupyter.
-- `scripts/`: utilitários executados diretamente, como a verificação do ambiente (`scripts/check_environment.py`).
+- `scripts/`: utilitários executados diretamente, como verificação do ambiente e treinamento dos modelos.
 - `src/data/`: código reutilizável de carregamento e manipulação inicial dos dados.
-- `src/preprocessing/`: código reutilizável de pré-processamento e extração de características.
-- `src/models/`: implementação e treinamento dos modelos.
+- `src/preprocessing/`: código reutilizável de pré-processamento, normalização, encoding e vetorização.
+- `src/models/`: implementação e treinamento dos modelos, incluindo o protocolo compartilhado da RQ1.
 - `src/evaluation/`: avaliação dos modelos e cálculo das métricas.
 - `src/utils/`: funções auxiliares compartilhadas pelo projeto.
 - `tests/`: testes automatizados do código produzido pela equipe.
 - `results/figures/`: figuras e gráficos gerados pelos experimentos.
 - `results/metrics/`: resultados das métricas gerados pelos experimentos.
+- `results/sample/`: saídas de execuções rápidas (`--sample-n`), não versionadas.
 - `.github/`: modelos para Issues e Pull Requests.
 
 Os notebooks devem apoiar a exploração e a comunicação dos experimentos. O código reutilizável deve ser mantido em `src/` para evitar concentrar toda a implementação nos notebooks.
@@ -148,7 +179,7 @@ As dependências têm as versões fixadas em `requirements.txt` para garantir um
 
 ### Decisão sobre dependências de NLP
 
-A normalização de textos (Issue 4) utilizará o **nltk**, incluído em `requirements.txt`: ele é instalável apenas via pip e oferece *stopwords* e o stemmer RSLP em português. Os dados linguísticos necessários são leves e baixados sob demanda com `nltk.download(...)` — na Issue 4 serão usados `stopwords`, `rslp` e `punkt_tab`. O **spacy** foi descartado por depender de um modelo de pipeline completo (`pt_core_news_sm`) baixado separadamente — mais pesado e mais um artefato a manter. Observação: os dados do nltk não são travados pelo `requirements.txt`; a versão utilizada deve ser registrada na documentação de decisões (Issue 11). Caso a lematização se mostre necessária, a decisão poderá ser revista na Issue 4.
+O **nltk** permanece em `requirements.txt` para experimentos de NLP previstos (stopwords, stemmer RSLP e tokenização), mas **não é utilizado pela normalização atual**: `src/preprocessing/normalization.py` usa apenas a biblioteca padrão (`re` e `unicodedata`). Nenhum dado do nltk precisa ser baixado para reproduzir os resultados versionados. O **spacy** foi descartado por depender de um modelo de pipeline completo (`pt_core_news_sm`) baixado separadamente — mais pesado e mais um artefato a manter. As 58 features do artigo já vêm pré-calculadas nos CSVs; se a equipe for reextraí-las no futuro, a decisão sobre spaCy/Hunspell/SenticNet deve ser revista em uma issue própria.
 
 ## Organização dos dados
 
@@ -271,6 +302,18 @@ Saídas (`<m>` = nome do modelo, `svm`):
 
 **Adicionar outro modelo (TAREFAS 12 a 14)**: crie um `ModelSpec` (como `SVM_SPEC` em `src/models/svm.py`) com o estimador, o grid e a linha da Tabela 3, e registre-o em `MODELS` no script.
 
+## Protocolo do artigo: Random Forest com as 58 features (RQ1)
+
+O Random Forest (`RandomForestClassifier` de `src/models/random_forest.py`) usa o mesmo protocolo das seções anteriores. O grid da Tarefa 12 tem 8 dimensões — `n_estimators` (5) × `max_depth` (4) × `min_samples_split` (3) × `min_samples_leaf` (3) × `max_features` (4) × `class_weight` (3) × `max_leaf_nodes` (3) × `min_impurity_decrease` (3) = **19.440 combinações**. No artigo, `n_iter=300` e `random_state=None`; a réplica fixa `random_state=42` para reprodutibilidade.
+
+```bash
+python scripts/train_article_model.py --model random_forest --sample-n 2000   # modo rápido
+python scripts/train_article_model.py --model random_forest                   # protocolo completo (não executado nesta etapa)
+python scripts/train_random_forest_tfidf.py                                   # comparação com TF-IDF
+```
+
+**Estado da execução:** o artefato versionado `results/metrics/random_forest_rq1.json` é uma execução de **amostra de 5.000 linhas com 1 candidato**, gerada com scikit-learn 1.8.0; o `param_grid` registrado tem um único valor por hiperparâmetro e não corresponde ao grid do código. Ele **não é o protocolo completo** e seus números não são comparáveis à Tabela 3. A execução completa continua pendente. Números, limitações e comandos em [`docs/diferencas.md`](docs/diferencas.md), seção 6.
+
 ## Protocolo do artigo: XGBoost com as 58 features (RQ1)
 
 O XGBoost foi o melhor modelo do artigo nas três métricas da Tabela 3 (MAE, RMSE e AUC) e o escolhido para as RQs seguintes. O mesmo protocolo da seção anterior se aplica; muda o estimador (`XGBClassifier` de `src/models/xgboost.py`) e o grid, extraído da Tarefa 14:
@@ -363,6 +406,8 @@ Cobertura por etapa do pipeline:
 | Métricas e baseline | `test_metrics.py`, `test_metricas_valores_conhecidos.py`, `test_baseline.py` |
 | Reprodutibilidade (seed fixa) | `test_reprodutibilidade.py`, `test_splitting.py` |
 | Protocolo do artigo e SVM (RQ1) | `test_article_protocol.py`, `test_svm.py`, `test_train_article_model.py`, `test_article_protocol_dados_reais.py` |
+| Random Forest (RQ1) | `test_random_forest.py` |
+| XGBoost (RQ1) | `test_xgboost.py` |
 | Gradient Boosting (RQ1) | `test_gradient_boosting.py` |
 
 Observações:
