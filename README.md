@@ -302,6 +302,41 @@ Saídas (`<m>` = `xgboost`):
 
 `scripts/train_xgboost_tfidf.py` reutiliza o TF-IDF da Issue 6 (`ensure_tfidf`), faz uma busca curta (`n_iter=8`, 3 folds, RMSE) só no treino e avalia no teste oficial; a comparação com `baseline_logreg.json` só se grava na base completa. As decisões e diferenças em relação ao artigo estão em [`docs/diferencas.md`](docs/diferencas.md), seção 4.
 
+## Protocolo do artigo: Gradient Boosting com as 58 features (RQ1)
+
+O Gradient Boosting (`GradientBoostingClassifier` de `src/models/gradient_boosting.py`) ficou entre os melhores modelos do artigo, próximo do XGBoost. O mesmo protocolo das seções anteriores se aplica; muda o estimador e o grid, extraído da Tarefa 13:
+
+```bash
+python scripts/train_article_model.py --model gradient_boosting --sample-n 2000   # modo rápido
+python scripts/train_article_model.py --model gradient_boosting --n-iter 20       # completo, n_iter reduzido
+python scripts/train_gradient_boosting_tfidf.py                                   # comparação com TF-IDF
+```
+
+| Argumento | Padrão | Descrição |
+| --- | --- | --- |
+| `--model` | *(obrigatório)* | `gradient_boosting` |
+| `--n-iter` | `300` (`5` no modo rápido) | Candidatos do `RandomizedSearchCV` |
+
+Os demais argumentos (`--n-splits`, `--seed`, `--sample-n`, `--output-dir`, `--shuffle`, `--n-jobs`, `--train`, `--test`) são iguais aos da seção SVM.
+
+**Grid**: `n_estimators` (5 valores) × `learning_rate` (4) × `max_depth`, `min_samples_split` e `min_samples_leaf` (3 cada) × `max_features` (4) = **2160 combinações**. O padrão de `--n-iter` é 300, como no artigo, mas **essa execução não é prática em uma máquina comum**: cada candidato exige 5 ajustes, e uma combinação com `n_estimators=1000`, `max_depth=10` e `max_features=None` leva dezenas de minutos em 41 mil linhas. Para a execução completa, use um `--n-iter` menor e registre o valor em [`docs/diferencas.md`](docs/diferencas.md), seção 5. O modo rápido leva cerca de 2 a 3 minutos em 1 núcleo (menos com o `--n-jobs -1` padrão) e grava em `results/sample/`.
+
+A AUC de diagnóstico (`auc_scores`) usa as **probabilidades** (P(4 estrelas) + P(5 estrelas)), não `decision_function`; veja a seção 5.2 de `docs/diferencas.md`.
+
+**A entrega da TAREFA 13 usou o modo rápido** (`--sample-n 2000`, `n_iter=5`; TF-IDF também em `--sample-n 2000`): a execução completa não foi realizada nesta etapa, e os artefatos ficam em `results/sample/`, que **não é versionado**. Números, limitações e o comando da execução completa em [`docs/diferencas.md`](docs/diferencas.md), seção 5.
+
+Saídas (`<m>` = `gradient_boosting`):
+
+| Arquivo | Conteúdo |
+| --- | --- |
+| `results/metrics/<m>_rq1.json` | Configuração, melhores parâmetros, média, desvio-padrão e IC 95% de cada métrica, e comparação com a Tabela 3 |
+| `results/metrics/<m>_rq1_folds.csv` | Métricas de cada fold |
+| `results/metrics/<m>_rq1_holdout.json` | Treino em `train.csv`, avaliação em `test.csv` |
+| `results/figures/confusion_matrix_<m>.png` | Matriz de confusão agregada (predições fora-da-dobra dos 5 folds) |
+| `results/metrics/<m>_tfidf.json` | GBT sobre a matriz TF-IDF (Issue 6) e diferença para a Regressão Logística do baseline |
+
+`scripts/train_gradient_boosting_tfidf.py` reutiliza o TF-IDF da Issue 6 (`ensure_tfidf`), faz uma busca curta (`--n-iter 6`, 3 folds, RMSE) só no treino e avalia no teste oficial; `--no-search` usa parâmetros fixos. A comparação com `baseline_logreg.json` só se grava na base completa. As decisões e diferenças em relação ao artigo estão em [`docs/diferencas.md`](docs/diferencas.md), seção 5.
+
 ## Testes automatizados
 
 Os testes ficam em `tests/` e usam [pytest](https://docs.pytest.org/). Com o ambiente virtual ativado, na raiz do repositório:
@@ -328,6 +363,7 @@ Cobertura por etapa do pipeline:
 | Métricas e baseline | `test_metrics.py`, `test_metricas_valores_conhecidos.py`, `test_baseline.py` |
 | Reprodutibilidade (seed fixa) | `test_reprodutibilidade.py`, `test_splitting.py` |
 | Protocolo do artigo e SVM (RQ1) | `test_article_protocol.py`, `test_svm.py`, `test_train_article_model.py`, `test_article_protocol_dados_reais.py` |
+| Gradient Boosting (RQ1) | `test_gradient_boosting.py` |
 
 Observações:
 

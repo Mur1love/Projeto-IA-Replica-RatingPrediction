@@ -79,3 +79,18 @@ XGBoost versionados em `results/metrics/`. Números, limitações e justificativ
 artefatos oficiais ficam versionados apenas quando a execução completa for concluída
 (`results/metrics/xgboost_rq1{,_folds.csv,_holdout}.json`, `xgboost_tfidf.json` e
 `../figures/confusion_matrix_xgboost.png`).
+
+## Gradient Boosting com as 58 features do artigo (RQ1) e comparação com TF-IDF
+
+Comando do protocolo: `python scripts/train_article_model.py --model gradient_boosting` (base completa,
+5 folds, grid de 2.160 combinações da TAREFA 13, com `--n-iter` reduzido em relação aos 300 do artigo).
+**Nesta etapa apenas o modo rápido foi executado** (`--sample-n 2000`, `n_iter=5`; e TF-IDF com
+`--sample-n 2000`, 36 s) — os artefatos ficam em `results/sample/`, que **não é versionado**; por isso
+não há artefatos do Gradient Boosting versionados em `results/metrics/`. Números, limitações e
+justificativa em [`docs/diferencas.md`](../../docs/diferencas.md), seção 5; os artefatos oficiais ficam
+versionados apenas quando a execução completa for concluída (`results/metrics/gradient_boosting_rq1{,_folds.csv,_holdout}.json`,
+`gradient_boosting_tfidf.json` e `../figures/confusion_matrix_gradient_boosting.png`).
+
+Leitura das métricas: `auc` é a AUC do artigo (classes 4–5 estrelas positivas, a partir de predições
+binárias); `auc_scores` é um diagnóstico a partir das **probabilidades** (`predict_proba`). MAE e RMSE
+estão na escala de 1 a 5 estrelas.

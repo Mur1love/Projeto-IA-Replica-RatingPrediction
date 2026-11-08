@@ -30,13 +30,21 @@ from src.models.article_protocol import (  # noqa: E402
 from src.models.svm import SVM_SPEC  # noqa: E402
 from src.models.random_forest import RANDOM_FOREST_SPEC  # noqa: E402
 from src.models.xgboost import XGB_SPEC  # noqa: E402
+from src.models.gradient_boosting import GRADIENT_BOOSTING_SPEC  # noqa: E402
 
 logger = logging.getLogger("train_article_model")
 
 RAIZ = Path(__file__).resolve().parents[1]
 
 # TAREFAS 12 a 14 (e próximas): importe o ModelSpec do novo modelo e acrescente aqui.
-MODELS = {spec.name: spec for spec in (SVM_SPEC, RANDOM_FOREST_SPEC, XGB_SPEC)}
+MODELS = {
+    spec.name: spec
+    for spec in (SVM_SPEC, RANDOM_FOREST_SPEC, XGB_SPEC, GRADIENT_BOOSTING_SPEC)
+}
+
+# Candidatos da busca no modo rápido (--sample-n). Modelos fora daqui usam o padrão (300):
+# o grid do SVM só tem 16 combinações. RF e GBT têm grids grandes e treinos caros.
+QUICK_N_ITER = {"random_forest": 10, "gradient_boosting": 5}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -75,7 +83,7 @@ def main(argv: list[str] | None = None) -> int:
     spec = MODELS[args.model]
     n_iter = args.n_iter
     if n_iter is None:
-        n_iter = 10 if args.model == "random_forest" and args.sample_n else DEFAULT_N_ITER
+        n_iter = QUICK_N_ITER.get(args.model, DEFAULT_N_ITER) if args.sample_n else DEFAULT_N_ITER
     out_dir = args.output_dir or (RAIZ / "results" / ("sample" if args.sample_n else ""))
 
     try:

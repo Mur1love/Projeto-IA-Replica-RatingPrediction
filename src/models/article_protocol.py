@@ -270,7 +270,10 @@ def diagnostic_scores(model: BaseEstimator, X: np.ndarray) -> np.ndarray | None:
     classes = getattr(model, "classes_", None)
     if classes is None:
         return None
-    if hasattr(model, "decision_function"):
+    # Estimadores com ``diagnostic_from_proba = True`` (ex.: Gradient Boosting) pedem
+    # probabilidades mesmo expondo ``decision_function`` (log-odds).
+    prefer_proba = getattr(model, "diagnostic_from_proba", False) and hasattr(model, "predict_proba")
+    if hasattr(model, "decision_function") and not prefer_proba:
         return positive_score(model.decision_function(X), classes)
     if hasattr(model, "predict_proba"):
         proba = np.asarray(model.predict_proba(X))
