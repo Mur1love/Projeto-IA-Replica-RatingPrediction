@@ -283,6 +283,7 @@ Comentários curtos produzem muitos zeros. No artigo, isso motivou a escolha de 
 | `src/models/gradient_boosting.py` | `GRADIENT_BOOSTING_SPEC` (grid da TAREFA 13) e comparação GBT + TF-IDF. |
 | `src/evaluation/metrics.py` | Acurácia, F1 macro, MAE e RMSE na escala de estrelas. |
 | `src/evaluation/plots.py` | Matrizes de confusão em PNG. |
+| `src/utils/` | Reservado para funções auxiliares; atualmente contém apenas `__init__.py`, sem código de produção. |
 
 ### 4.3 Scripts
 
@@ -666,6 +667,8 @@ No modo rápido, os mesmos arquivos vão para `results/sample/`.
 
 ### 8.1 SVM
 
+**Como funciona:** o `SVC` busca uma fronteira que maximiza a margem entre as classes. O parâmetro `C` controla o compromisso entre margem larga e erros de treino (valores menores = mais regularização). O kernel `linear` usa o produto interno original; o `rbf` usa uma similaridade gaussiana cujo alcance é controlado por `gamma`. O artigo não padroniza as features, o que penaliza o RBF e deixa o SVM lento.
+
 **Implementação:** `src/models/svm.py`, `SVC` do scikit-learn, sem padronização.
 
 **Grid:** `C` ∈ {0,01; 0,1}, `kernel` ∈ {linear, rbf}, `gamma` ∈ {scale, auto, 0,01; 0,1} = 16 combinações. `n_iter=300` avalia todas as 16.
@@ -689,6 +692,8 @@ Outras métricas: F1 macro 0,3550 ± 0,0023; acurácia 0,3796 ± 0,0020; AUC por
 **Leitura:** a réplica reproduz o artigo; as médias diferem em no máximo 0,00014. O desvio-padrão da réplica é um pouco menor, possivelmente por diferenças numéricas do scikit-learn puro vs. `scikit-learn-intelex` e pelo arredondamento por fold no artigo. O holdout fica dentro da faixa dos folds.
 
 ### 8.2 Random Forest
+
+**Como funciona:** o Random Forest treina muitas árvores de decisão em amostras *bootstrap* e, em cada divisão, considera apenas um subconjunto aleatório de features (`max_features`). A predição final é a votação majoritária das árvores. `n_estimators` define o número de árvores; `max_depth`, `min_samples_split`, `min_samples_leaf`, `max_leaf_nodes` e `min_impurity_decrease` controlam o crescimento; `class_weight` lida com desbalanceamento; `max_features` controla a aleatoriedade e a correlação entre árvores.
 
 **Implementação:** `src/models/random_forest.py`, `RandomForestClassifier` com `random_state=42` e `n_jobs=1`.
 
@@ -726,6 +731,8 @@ Métricas da amostra (não comparáveis à Tabela 3):
 
 ### 8.3 XGBoost
 
+**Como funciona:** o XGBoost é um *gradient boosting* regularizado. As árvores são construídas sequencialmente: cada nova árvore tenta corrigir os resíduos das anteriores. `reg_alpha` (L1) e `reg_lambda` (L2) penalizam a complexidade, `gamma` exige um ganho mínimo para criar uma divisão, `min_child_weight` limita o peso mínimo por folha, e `subsample`/`colsample_bytree` amostram linhas e colunas. `learning_rate` encolhe a contribuição de cada árvore e `n_estimators` define quantas são adicionadas. O `tree_method` padrão `hist` usa histogramas para acelerar o treino.
+
 **Implementação:** `src/models/xgboost.py`, `XGBClassifier` com `random_state=42`, `n_jobs=1`; o paralelismo fica no `RandomizedSearchCV`/`n_jobs` externo. `tree_method` padrão `hist` no xgboost 3.x.
 
 **Grid:** `n_estimators` (4) × `learning_rate`, `max_depth`, `min_child_weight`, `gamma`, `subsample`, `colsample_bytree`, `reg_alpha`, `reg_lambda` (3 cada) = **26.244 combinações**. `n_iter=300` no protocolo.
@@ -752,6 +759,8 @@ Outras métricas do modo rápido: F1 macro 0,3485 ± 0,0178; acurácia 0,3535 ±
 
 ### 8.4 Gradient Boosting
 
+**Como funciona:** o Gradient Boosting treina árvores sequencialmente; cada árvore é ajustada ao gradiente negativo da função de perda (resíduos) do modelo atual. `learning_rate` controla a contribuição de cada árvore, `n_estimators` o número de etapas, e `max_depth`, `min_samples_split`, `min_samples_leaf` e `max_features` controlam a complexidade. No scikit-learn multiclasse, cada etapa adiciona uma árvore por classe.
+
 **Implementação:** `src/models/gradient_boosting.py`, `GradientBoostingClassifier` (subclasse que usa `predict_proba` na AUC de diagnóstico), `random_state=42`.
 
 **Grid:** `n_estimators` (5) × `learning_rate` (4) × `max_depth` (3) × `min_samples_split` (3) × `min_samples_leaf` (3) × `max_features` (4) = **2.160 combinações**. `n_iter=300` no artigo; a réplica permite configurar.
@@ -777,6 +786,8 @@ IC 95% do modo rápido: MAE [0,9718; 1,1082], RMSE [1,3801; 1,5252], AUC [0,6907
 **Leitura:** o desvio-padrão entre folds é 9–11× o do artigo. As médias do artigo ficam um pouco fora do IC do modo rápido nas três métricas, o que é coerente com menos dados e apenas 5 candidatos; não permite afirmar equivalência nem refutar o artigo. O protocolo completo continua pendente.
 
 ### 8.5 Regressão Logística
+
+**Como funciona:** a Regressão Logística modela a probabilidade de cada classe com a função *softmax* (multinomial) e minimiza a entropia cruzada com regularização L2 controlada por `C`. O solver `lbfgs` é um otimizador quasi-Newton determinístico dado o mesmo ponto de partida; `max_iter` limita as iterações. A predição é a classe de maior probabilidade.
 
 A LR aparece em dois papéis:
 
@@ -905,9 +916,9 @@ O IC da réplica é mais largo que o publicado no artigo, porque o artigo inclui
 
 Não é possível ranquear os cinco algoritmos do artigo com os dados atuais, porque só o SVM tem execução completa. O que se pode dizer:
 
-- No **mesmo split holdout oficial**, a LR + TF-IDF teve o menor MAE (0,6819), seguida de perto pelo SVM + TF-IDF (0,6830); o SVM com 58 features teve MAE 1,0476. Isso compara **representações**, não os algoritmos do artigo, e não foi testado estatisticamente.
+- No **mesmo split holdout oficial**, a LR + TF-IDF teve o menor MAE (0,6819), seguida de perto pelo SVM + TF-IDF (0,6830); o SVM com 58 features teve MAE 1,0476. Isso compara **representações**, não os algoritmos do artigo, e não foi testado estatisticamente. Entre os experimentos completos disponíveis, esses são o **melhor** (LR/SVM + TF-IDF, praticamente empatados) e o **pior** (SVM com 58 features) em MAE.
 - Nos experimentos rápidos/amostrais, o TF-IDF teve MAE menor que as 58 features em todos os modelos testados (RF, XGB, GBT), mas os treinos têm tamanhos diferentes e os resultados são indicativos.
-- No artigo, o XGBoost é o melhor modelo; na réplica, essa conclusão **não foi verificada** porque o XGBoost só rodou em modo rápido.
+- No artigo, o XGBoost é o melhor modelo; na réplica, essa conclusão **não foi verificada** porque o XGBoost só rodou em modo rápido. No protocolo completo de 58 features, não há ranking.
 
 ### 10.5 TF-IDF × 58 features
 
@@ -944,6 +955,14 @@ Fonte: `results/metrics/svm_rq1_folds.csv`. O fold 4 é o melhor nas duas execu�
 | `results/figures/confusion_matrix_random_forest.png` | RF com 58 features (amostra de 5.000) |
 
 As matrizes de XGBoost e Gradient Boosting existem apenas em `results/sample/figures/` e não são versionadas.
+
+![Matriz de confusão — Regressão Logística + TF-IDF](../results/figures/confusion_matrix_logreg.png)
+
+![Matriz de confusão — Regressão Logística na validação 80/20](../results/figures/confusion_matrix_logreg_validation.png)
+
+![Matriz de confusão — SVM com as 58 features](../results/figures/confusion_matrix_svm.png)
+
+![Matriz de confusão — Random Forest com as 58 features (amostra)](../results/figures/confusion_matrix_random_forest.png)
 
 ---
 
@@ -1209,6 +1228,16 @@ python -m pytest --cov --cov-fail-under=80
 - Os números do modo rápido de XGB/GBT estão documentados em `docs/diferencas.md`, mas os JSONs correspondentes não são versionados.
 - Antes de abrir um PR, rode `python -m pytest` e confira `git status` para não incluir dados ou artefatos grandes.
 
+**Smoke test dos comandos documentados (2026-11-08):**
+
+| Comando | Resultado |
+| --- | --- |
+| `python -m pytest -q` | 286 passed, 1 skipped (skip condicional pré-existente) |
+| `python run_baseline.py --sample-size 1000` | concluiu em 0,5 s; LR acc 0,3560, F1 0,3520, MAE 0,9760, RMSE 1,3770 na amostra 1.000/250 |
+| `python scripts/train_article_model.py --model svm --sample-n 2000 --n-jobs 1` | concluiu; 16 candidatos; MAE 1,0280 ± 0,0408, RMSE 1,4708 ± 0,0466, AUC 0,7277 ± 0,0307; holdout 1,0169 / 1,4312 / 0,7555 |
+
+Esse teste verifica que os comandos e caminhos principais funcionam no ambiente local. A validação por **outro integrante**, em outra máquina/ambiente, continua sendo feita na revisão do Pull Request — é ela que fecha o critério "outra pessoa consegue reproduzir".
+
 ### 15.6 Ordem sugerida para reproduzir
 
 1. Configurar o ambiente e verificar dependências.
@@ -1240,3 +1269,27 @@ MARREIRA, E. *Rating Prediction with Textual Features*: [github.com/emanuellemar
 - [`docs/diferencas.md`](diferencas.md)
 - [`results/metrics/README.md`](../results/metrics/README.md)
 - `notebooks/auditoria_dados.ipynb`
+
+---
+
+## Apêndice A — Cobertura do checklist da issue #11
+
+| Grupo do checklist | Onde está documentado |
+| --- | --- |
+| 1. Contextualização e objetivos | Seções 1.1–1.4 |
+| 2. Base de dados | Seção 2 e `data/README.md` |
+| 3. As 58 features | Seção 3 e `docs/features.md` |
+| 4. Arquitetura e organização | Seção 4 |
+| 5. Pré-processamento e normalização | Seção 5 e `docs/diferencas.md` §2 |
+| 6. Baseline TF-IDF + Regressão Logística | Seção 6 |
+| 7. Protocolo de treinamento com 58 features | Seção 7 |
+| 8. Algoritmos individualmente | Seção 8 |
+| 9. Métricas de avaliação | Seção 9 |
+| 10. Resultados dos experimentos | Seção 10 |
+| 11. Experimentos adicionais | Seção 11 |
+| 12. Diferenças em relação ao artigo | Seção 12 e `docs/diferencas.md` |
+| 13. Perguntas de pesquisa | Seção 13 |
+| 14. Limitações e dificuldades | Seção 14 |
+| 15. Consolidação e reprodução | Seção 15 |
+
+Itens marcados como **pendentes** na seção 13 (PP2, PP3 e PP4) e na seção 14.5 (execuções completas de RF/XGB/GBT e LR com 58 features) não foram executados; a documentação registra a situação sem apresentar resultados não verificados.
