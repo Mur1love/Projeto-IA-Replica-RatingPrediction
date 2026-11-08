@@ -1,18 +1,23 @@
 # Diferenças em relação ao artigo e decisões da réplica
 
-Este documento registra onde a réplica se afasta do artigo *Rating Prediction in Brazilian Portuguese Reviews* e por quê. Cada decisão deve apontar para uma evidência em `results/`. Novas diferenças devem ser acrescentadas à seção 1 conforme o projeto avança.
+Este documento registra onde a réplica se afasta do artigo *Rating Prediction in Brazilian Portuguese Reviews* e por quê. Cada decisão deve apontar para uma evidência em `results/`. Novas diferenças devem ser acrescentadas à seção 1 conforme o projeto avança. A visão consolidada do projeto, com dados, features, arquitetura, resultados e reprodução, está em [`docs/documentacao.md`](documentacao.md).
 
 ## 1. Diferenças em relação ao artigo
 
 | Tema | Artigo | Réplica (estado atual) | Observação |
 | --- | --- | --- | --- |
-| Representação do texto | 58 features manuais (POS, sintáticas, léxicas, concretude, estruturais, Twitter/X, miscelânea) | Baseline com **TF-IDF** (1–2-gramas) + Regressão Logística; as 58 features ainda não entram | O artigo cita TF-IDF e Bag of Words apenas como *trabalho futuro* (Seção 5). O baseline é, portanto, um ponto de partida próprio da réplica, não uma reprodução. |
-| Normalização do texto | Não descreve nenhuma etapa de normalização | `normalize()` aplicada antes do TF-IDF | Avaliada na seção 2; decisão na seção 2.5. |
-| Métricas | MAE, RMSE e AUC | Acurácia, F1 macro, MAE e RMSE no baseline TF-IDF; MAE, RMSE, F1 macro, acurácia e AUC no protocolo do artigo | A AUC está implementada no harness do protocolo do artigo (seção 3), não no baseline LR. |
+| Representação do texto | 58 features manuais (POS, sintáticas, léxicas, concretude, estruturais, Twitter/X, miscelânea) | 58 features no protocolo da RQ1; **TF-IDF** (1–2-gramas) + Regressão Logística como baseline e comparação complementar | O artigo cita TF-IDF e Bag of Words apenas como *trabalho futuro* (Seção 5). O TF-IDF é um experimento próprio da réplica, não uma reprodução. |
+| Normalização do texto | Não descreve nenhuma etapa de normalização | `normalize()` aplicada antes do TF-IDF | Avaliada na seção 2; decisão na seção 2.5. Não afeta o protocolo com as 58 features. |
+| Métricas | MAE, RMSE e AUC | Acurácia, F1 macro, MAE e RMSE no baseline TF-IDF; MAE, RMSE, F1 macro, acurácia e AUC no protocolo do artigo | A AUC está implementada no harness do protocolo do artigo, não no baseline LR. |
 | Representação no SVM (RQ1) | 58 features manuais | SVM com as 58 features (seção 3) e, como comparação complementar, SVM sobre TF-IDF | O SVM com as 58 features é a reprodução do artigo; o SVM com TF-IDF é um experimento próprio. |
+| Random Forest (RQ1) | 58 features, 5 folds, `n_iter=300`, `random_state=None` | Modelo e grid implementados; execução versionada é uma amostra de 5.000 linhas com 1 candidato e `random_state=42` | A execução completa do grid de 19.440 combinações **não** foi feita; os números não são comparáveis à Tabela 3. Seção 6. |
+| Gradient Boosting (RQ1) | Grid de 2160 combinações, `n_iter=300` | Mesmo grid e protocolo; nesta etapa só o **modo rápido** foi executado (`--sample-n 2000`, `n_iter=5`) | Execução completa pendente; números não comparáveis. Seções 5.2 e 5.3. |
+| XGBoost (RQ1) | 58 features, 5 folds, `n_iter=300` | Apenas modo rápido (`--sample-n 2000`, `n_iter=20`) | Execução completa interrompida por hardware; números não comparáveis. Seção 4. |
+| Regressão Logística (RQ1) | LR com 58 features (linha da Tabela 3) | LR + **TF-IDF** no baseline; LR com 58 features não executada | A LR da réplica não é a LR do artigo e não deve ser comparada à Tabela 3. Seção 7.5. |
+| TF-IDF × 58 features | Não existe no artigo (TF-IDF é trabalho futuro) | Comparação complementar para SVM (completa), RF (amostra), XGB e GBT (modo rápido) | Experimento próprio; resultados indicativos, sem teste estatístico. Seção 7.3. |
 | IC de 95% | IC calculado com a linha da média incluída (6 valores, 5 g.l.) | IC calculado só entre os 5 folds (5 valores, 4 g.l.) | O IC publicado é cerca de 24% mais estreito. Seção 3.3. |
-| Gradient Boosting (RQ1) | Grid de 2160 combinações, `n_iter=300` | Mesmo grid e protocolo; `n_iter` **reduzido**, e nesta etapa só o **modo rápido** foi executado (300 candidatos não cabem em tempo razoável) | Seções 5.2 e 5.3. |
-| Duplicatas treino/teste | Não discutidas no artigo | 280 combinações (`categoria`, `text`, `rating`) aparecem nos dois splits | Herdado do split oficial; pode inflar as métricas. Ver `data/README.md`. |
+| Duplicatas treino/teste | Não discutidas no artigo | 280 combinações (`categoria`, `text`, `rating`) aparecem nos dois splits (351 ocorrências) | Herdado do split oficial; mantido por fidelidade e pode inflar as métricas. Ver `data/README.md` e seção 7.4. |
+| Status geral da RQ1 | Cinco modelos completos | Apenas o SVM com 58 features foi executado no protocolo completo | As demais linhas são parciais; a RQ1 da réplica está **incompleta**. Seção 7. |
 
 ## 2. Normalização de texto: com e sem
 
@@ -344,7 +349,7 @@ IC de 95% do modo rápido: MAE [0,9718; 1,1082], RMSE [1,3801; 1,5252], AUC [0,6
 - **As médias do artigo ficam um pouco fora do IC de 95% do modo rápido nas três métricas** (por exemplo, MAE 0,9612 contra um limite inferior de 0,9718). Isso é diferente do XGBoost, em que as diferenças couberam no IC. A direção é coerente com treinar em muito menos dados e com apenas 5 candidatos (a busca pode não ter chegado à região do grid encontrada pelo artigo); não indica erro no protocolo, mas também não permite afirmar equivalência com o artigo.
 - O holdout tem AUC (0,7422) acima da média dos folds (0,7072), mas é uma única divisão com 413 linhas de teste; não deve ser comparado com a média dos folds.
 
-Artefatos do modo rápido (não versionados): `results/sample/metrics/gradient_boosting_rq1.json`, `gradient_boosting_rq1_folds.csv`, `gradient_boosting_rq1_holdout.json`, `gradient_boosting_tfidf.json` e `results/sample/figures/confusion_matrix_gradient_boosting.png`.
+Artefatos esperados do modo rápido (não versionados; gerados na máquina do responsável): `results/sample/metrics/gradient_boosting_rq1.json`, `gradient_boosting_rq1_folds.csv`, `gradient_boosting_rq1_holdout.json`, `gradient_boosting_tfidf.json` e `results/sample/figures/confusion_matrix_gradient_boosting.png`.
 
 ### 5.4 Comparação complementar: GBT com TF-IDF (modo rápido)
 
@@ -376,3 +381,131 @@ python scripts/train_gradient_boosting_tfidf.py                                 
 ```
 
 Observação: a duração da execução completa depende do `--n-iter` e dos núcleos. Uma estimativa grosseira, por extrapolação de medições em 1.600 e 8 mil linhas (não de uma execução completa), é da ordem de 20 minutos por candidato em 1 núcleo; divida pelo número de núcleos e some o reajuste por fold e o holdout.
+
+## 6. Random Forest com as 58 features (RQ1)
+
+### 6.1 O que foi implementado
+
+`src/models/random_forest.py` define `RANDOM_FOREST_SPEC` com `RandomForestClassifier` e o grid da TAREFA 12:
+
+| Item | Artigo | Réplica |
+| --- | --- | --- |
+| Dados | `train.csv` + `test.csv` concatenados | Igual; textos vazios mantidos |
+| Folds | 5 folds estratificados por `categoria_rating`, `shuffle=False` | Igual |
+| Busca | `RandomizedSearchCV`, 300 candidatos, RMSE | Igual no código; a execução versionada usou 1 candidato |
+| Grid | 8 dimensões (`n_estimators`, `max_depth`, `min_samples_split`, `min_samples_leaf`, `max_features`, `class_weight`, `max_leaf_nodes`, `min_impurity_decrease`) | **19.440 combinações** |
+| `random_state` | `None` no script original | `42`, para reprodutibilidade |
+| Melhores parâmetros do artigo | Não informados | `ARTICLE_BEST_PARAMS` vazio |
+| Métricas | MAE, RMSE, AUC | Igual + F1 macro, acurácia e AUC por scores |
+| Holdout | — | Treino em `train.csv`, avaliação em `test.csv` |
+
+### 6.2 Estado da execução
+
+O artefato versionado `results/metrics/random_forest_rq1.json` **não é a execução completa do protocolo**. Ele registra:
+
+- `sample_n=5000`, `n_rows=5000`, `n_train_csv_rows=4034`, `n_test_csv_rows=966`;
+- `n_iter_requested=1`, `n_candidates_evaluated=1`;
+- um `param_grid` com **um único valor por hiperparâmetro**, que não corresponde ao grid de 19.440 combinações do código;
+- scikit-learn **1.8.0**.
+
+O CSV de folds (`random_forest_rq1_folds.csv`) mostra `n_train=4000` e `n_test=1000` por fold, consistente com uma validação cruzada de 5 folds sobre as 5.000 linhas da amostra. O comando exato que gerou o artefato não está registrado. **A execução completa do Random Forest continua pendente.**
+
+### 6.3 Números da amostra (não comparáveis à Tabela 3)
+
+| Métrica | Média ± desvio | IC 95% |
+| --- | --- | --- |
+| MAE | 1,0784 ± 0,0200 | [1,0536; 1,1032] |
+| RMSE | 1,5165 ± 0,0296 | [1,4797; 1,5532] |
+| AUC | 0,7168 ± 0,0110 | [0,7032; 0,7304] |
+| Acurácia | 0,3532 ± 0,0122 | [0,3381; 0,3683] |
+| F1 macro | 0,3300 ± 0,0157 | [0,3105; 0,3495] |
+| AUC por scores | 0,7925 ± 0,0101 | [0,7800; 0,8050] |
+
+**Holdout da amostra** (4.034 → 966): MAE 1,1087; RMSE 1,5407; F1 macro 0,3131; acurácia 0,3375; AUC 0,7150; AUC por scores 0,7867.
+
+**Tempos da amostra:** busca 0,22 s; avaliação 0,28 s. Não representam o custo do protocolo completo.
+
+**RF + TF-IDF (amostra de 5.000):** `results/metrics/random_forest_tfidf.json` registra MAE 0,8088; RMSE 1,2487; F1 macro 0,4458; acurácia 0,4568; AUC 0,7867; AUC por scores 0,8647; 28.500 features; `n_iter=1`; 8,96 s; scikit-learn 1.8.0; `comparison_with_baseline=null` porque o modo rápido não grava a comparação.
+
+### 6.4 Como reproduzir
+
+```bash
+python scripts/train_article_model.py --model random_forest                      # protocolo completo (grid de 19.440; não executado nesta etapa)
+python scripts/train_article_model.py --model random_forest --sample-n 2000      # modo rápido (n_iter padrão 10)
+python scripts/train_random_forest_tfidf.py                                      # TF-IDF na base completa
+python scripts/train_random_forest_tfidf.py --sample-n 2000                      # TF-IDF rápido
+```
+
+### 6.5 Limitações
+
+- Só a amostra de 5.000 foi versionada; o grid completo e os 300 candidatos não foram executados.
+- O artefato foi gerado com scikit-learn 1.8.0, diferente dos demais (1.9.1).
+- O `param_grid` do JSON não corresponde ao grid do código; trate os números como smoke test, não como protocolo.
+- O TF-IDF remove 1 linha de `text` vazio por split; o RF com 58 features mantém todas.
+
+## 7. Consolidação da RQ1, TF-IDF × 58 features e pendências
+
+### 7.1 Tabela consolidada da RQ1
+
+Média ± desvio-padrão entre os 5 folds. **Apenas o SVM é comparável à Tabela 3.**
+
+| Modelo | Execução | MAE | RMSE | AUC | Acurácia | F1 macro |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| SVM | Completa (51.465 linhas) | 1,0430 ± 0,0062 | 1,5085 ± 0,0112 | 0,7303 ± 0,0047 | 0,3796 ± 0,0020 | 0,3550 ± 0,0023 |
+| Random Forest | Amostra 5.000, 1 candidato | 1,0784 ± 0,0200 | 1,5165 ± 0,0296 | 0,7168 ± 0,0110 | 0,3532 ± 0,0122 | 0,3300 ± 0,0157 |
+| XGBoost | Modo rápido 2.000, 20 candidatos | 1,0215 ± 0,0327 | 1,4337 ± 0,0490 | 0,7204 ± 0,0306 | 0,3535 ± 0,0153 | 0,3485 ± 0,0178 |
+| Gradient Boosting | Modo rápido 2.000, 5 candidatos | 1,0400 ± 0,0549 | 1,4527 ± 0,0584 | 0,7072 ± 0,0133 | n/d | n/d |
+| Regressão Logística (artigo) | **Não executada** | 1,0149 ± 0,0043 | 1,4691 ± 0,0042 | 0,7328 ± 0,0064 | — | — |
+
+Referência do artigo (Tabela 3): GBT 0,9612 / 1,3727 / 0,7318; LR 1,0149 / 1,4691 / 0,7328; RF 0,9717 / 1,4001 / 0,7367; XGB 0,9499 / 1,3721 / 0,7390; SVM 1,0431 / 1,5085 / 0,7304.
+
+**Conclusão:** o SVM reproduz o artigo; RF, XGB e GBT estão parciais; a LR com 58 features não foi executada. A RQ1 da réplica está incompleta e não permite ranking estatístico.
+
+### 7.2 Holdout complementar
+
+| Modelo | Representação | Treino → teste | MAE | RMSE | AUC |
+| --- | --- | ---: | ---: | ---: | ---: |
+| LR | TF-IDF | 41.171 → 10.292 | 0,6819 | 1,0619 | n/d |
+| SVM | 58 features | 41.172 → 10.293 | 1,0476 | 1,5160 | 0,7295 |
+| SVM | TF-IDF | 41.171 → 10.292 | 0,6830 | 1,0596 | 0,8261 |
+| Random Forest | 58 features | 4.034 → 966 | 1,1087 | 1,5407 | 0,7150 |
+| Random Forest | TF-IDF | 5.000 → 1.250 | 0,8088 | 1,2487 | 0,7867 |
+| XGBoost | 58 features | 1.587 → 413 | 1,0508 | 1,4159 | 0,7518 |
+| XGBoost | TF-IDF | 2.000 → 500 | 0,9420 | 1,3409 | 0,7267 |
+| Gradient Boosting | 58 features | 1.587 → 413 | 1,0726 | 1,4901 | 0,7422 |
+| Gradient Boosting | TF-IDF | 2.000 → 500 | 0,9260 | 1,3364 | 0,7333 |
+
+Os holdouts de RF/XGB/GBT são recortes das amostras; apenas LR e SVM usam a base completa. A AUC do baseline LR não foi registrada.
+
+### 7.3 TF-IDF × 58 features
+
+| Modelo | MAE 58 features | MAE TF-IDF | Δ (TF-IDF − 58) | Status |
+| --- | ---: | ---: | ---: | --- |
+| SVM | 1,0476 | 0,6830 | −0,3646 | Completo, mesmo split oficial |
+| Random Forest | 1,1087 | 0,8088 | −0,2999 | Amostral, treinos diferentes |
+| XGBoost | 1,0508 | 0,9420 | −0,1088 | Modo rápido, treinos diferentes |
+| Gradient Boosting | 1,0726 | 0,9260 | −0,1466 | Modo rápido, treinos diferentes |
+
+Em todas as comparações disponíveis, o TF-IDF teve MAE menor. A diferença é grande no SVM completo e menor nos modos rápidos. Ressalvas: o TF-IDF remove 1 linha vazia por split; o SVM com 58 features usa hiperparâmetros buscados e o com TF-IDF usa parâmetros fixos; os modos rápidos usam amostras e treinos de tamanhos diferentes; não há teste estatístico. A comparação é **indicativa**, não conclusiva, e não mede o efeito das 58 features no protocolo completo dos demais modelos.
+
+A **LR + TF-IDF** do baseline (MAE 0,6819; RMSE 1,0619; acurácia 0,4898; F1 macro 0,4862 no teste oficial) não tem contraparte com 58 features nesta etapa, porque a LR do artigo não foi reexecutada. Por isso ela não entra na tabela acima; serve como referência do baseline TF-IDF e não deve ser comparada à linha Logistic Regression da Tabela 3.
+
+### 7.4 Decisão sobre as duplicatas
+
+As 280 combinações distintas (351 ocorrências) de (`categoria`, `text`, `rating`) entre treino e teste foram **mantidas**. Remover duplicatas mudaria a base do artigo e invalidaria a comparação direta; o artigo não discute o problema. A limitação fica registrada: o modelo pode ter visto no treino exemplos do teste, o que tende a **inflar** as métricas. O mesmo vale para as duplicatas dentro de cada split (949 linhas repetidas no treino e 104 no teste, além da primeira ocorrência), que não foram tratadas.
+
+### 7.5 LR do artigo × LR da réplica
+
+A linha da Tabela 3 é **Logistic Regression com as 58 features** (MAE 1,0149 ± 0,0043; RMSE 1,4691 ± 0,0042; AUC 0,7328 ± 0,0064). A LR da réplica usa **TF-IDF** e tem MAE 0,6819, RMSE 1,0619, acurácia 0,4898 e F1 macro 0,4862 no teste oficial. São experimentos diferentes: a LR da réplica **não** reproduz a linha da Tabela 3 e não deve ser comparada a ela. A LR com 58 features continua pendente.
+
+### 7.6 Pendências para completar a RQ1
+
+1. Executar Random Forest no protocolo completo (grid de 19.440, `n_iter=300`).
+2. Executar XGBoost no protocolo completo (grid de 26.244, `n_iter=300`).
+3. Executar Gradient Boosting no protocolo completo (grid de 2.160, `n_iter` documentado).
+4. Executar a LR com as 58 features para completar a Tabela 3.
+5. Executar as comparações TF-IDF + RF/XGB/GBT na base completa.
+6. Rodar Friedman/Nemenyi para a PP1.
+7. Executar PP2 (grupos), PP3 (ablation/RFE) e PP4 (por categoria).
+
+Enquanto esses itens não forem concluídos, os números de modo rápido/amostrais devem ser lidos apenas como diagnóstico interno, nunca como reprodução do artigo.
