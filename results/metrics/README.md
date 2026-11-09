@@ -115,6 +115,24 @@ Leitura das métricas: `auc` é a AUC do artigo (classes 4–5 estrelas positiva
 binárias); `auc_scores` é um diagnóstico a partir das **probabilidades** (`predict_proba`). MAE e RMSE
 estão na escala de 1 a 5 estrelas.
 
+## Regressão Logística com as 58 features do artigo (RQ1)
+
+Comando do protocolo: `python scripts/train_article_model.py --model logistic_regression` (base
+completa, 5 folds, grid de 50 combinações de `code/RQ1/scripts/logistic_regression.py` do repositório
+original, `n_iter=300` → busca exaustiva; seed 42) e monitor
+`python scripts/monitor_regressao_logistica.py --log results/logistic_regression_run.log`
+(exige `--verbose 11`). A contraparte **TF-IDF** é o próprio baseline da Issue 7
+(`baseline_logreg.json`), o que completa a comparação TF-IDF × 58 features.
+
+Artefatos versionados: `logistic_regression_rq1.json` (melhores parâmetros, médias/desvios/ICs e
+comparação com a linha Logistic Regression da Tabela 3), `logistic_regression_rq1_folds.csv`,
+`logistic_regression_rq1_holdout.json` e `../figures/confusion_matrix_logistic_regression.png`
+(predições fora-da-dobra dos 5 folds).
+
+Diferença de ambiente: no scikit-learn 1.9.1, `liblinear` não suporta multiclasse (OvR removido);
+os 10 candidatos `liblinear` do grid do artigo falham com score NaN e o ranking os ignora.
+Detalhes em [`docs/diferencas.md`](../../docs/diferencas.md), seção 7.
+
 ## Consolidação da RQ1 (estado atual)
 
 Apenas o **SVM** foi executado no protocolo completo do artigo. As demais linhas estão implementadas,

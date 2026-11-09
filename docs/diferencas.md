@@ -13,11 +13,11 @@ Este documento registra onde a réplica se afasta do artigo *Rating Prediction i
 | Random Forest (RQ1) | 58 features, 5 folds, `n_iter=300`, `random_state=None` | Modelo e grid implementados; execução versionada é uma amostra de 5.000 linhas com 1 candidato e `random_state=42` | A execução completa do grid de 19.440 combinações **não** foi feita; os números não são comparáveis à Tabela 3. Seção 6. |
 | Gradient Boosting (RQ1) | Grid de 2160 combinações, `n_iter=300` | Mesmo grid e protocolo; nesta etapa só o **modo rápido** foi executado (`--sample-n 2000`, `n_iter=5`) | Execução completa pendente; números não comparáveis. Seções 5.2 e 5.3. |
 | XGBoost (RQ1) | 58 features, 5 folds, `n_iter=300` | Apenas modo rápido (`--sample-n 2000`, `n_iter=20`) | Execução completa interrompida por hardware; números não comparáveis. Seção 4. |
-| Regressão Logística (RQ1) | LR com 58 features (linha da Tabela 3) | LR + **TF-IDF** no baseline; LR com 58 features não executada | A LR da réplica não é a LR do artigo e não deve ser comparada à Tabela 3. Seção 7.5. |
-| TF-IDF × 58 features | Não existe no artigo (TF-IDF é trabalho futuro) | Comparação complementar para SVM (completa), RF (amostra), XGB e GBT (modo rápido) | Experimento próprio; resultados indicativos, sem teste estatístico. Seção 7.3. |
+| Regressão Logística (RQ1) | LR com 58 features (linha da Tabela 3) | LR + **TF-IDF** no baseline; LR com 58 features no protocolo completo (seção 7) | A LR da réplica com 58 elementos é a reprodução da linha da Tabela 3; a LR + TF-IDF da issue #7 é adicional. Seção 8.5. |
+| TF-IDF × 58 features | Não existe no artigo (TF-IDF é trabalho futuro) | Comparação complementar para SVM e LR (completas), RF (amostra), XGB e GBT (modo rápido) | Experimento próprio; resultados indicativos, sem teste estatístico. Seção 8.3. |
 | IC de 95% | IC calculado com a linha da média incluída (6 valores, 5 g.l.) | IC calculado só entre os 5 folds (5 valores, 4 g.l.) | O IC publicado é cerca de 24% mais estreito. Seção 3.3. |
-| Duplicatas treino/teste | Não discutidas no artigo | 280 combinações (`categoria`, `text`, `rating`) aparecem nos dois splits (351 ocorrências) | Herdado do split oficial; mantido por fidelidade e pode inflar as métricas. Ver `data/README.md` e seção 7.4. |
-| Status geral da RQ1 | Cinco modelos completos | Apenas o SVM com 58 features foi executado no protocolo completo | As demais linhas são parciais; a RQ1 da réplica está **incompleta**. Seção 7. |
+| Duplicatas treino/teste | Não discutidas no artigo | 280 combinações (`categoria`, `text`, `rating`) aparecem nos dois splits (351 ocorrências) | Herdado do split oficial; mantido por fidelidade e pode inflar as métricas. Ver `data/README.md` e seção 8.4. |
+| Status geral da RQ1 | Cinco modelos completos | SVM e Regressão Logística executados no protocolo completo com as 58 features | RF, XGB e GBT são parciais (amostra/modo rápido); a RQ1 da réplica tem 2 linhas comparáveis à Tabela 3. Seções 7 e 8. |
 
 ## 2. Normalização de texto: com e sem
 
@@ -443,9 +443,9 @@ python scripts/train_random_forest_tfidf.py --sample-n 2000                     
 - O `param_grid` do JSON não corresponde ao grid do código; trate os números como smoke test, não como protocolo.
 - O TF-IDF remove 1 linha de `text` vazio por split; o RF com 58 features mantém todas.
 
-## 7. Consolidação da RQ1, TF-IDF × 58 features e pendências
+## 8. Consolidação da RQ1, TF-IDF × 58 features e pendências
 
-### 7.1 Tabela consolidada da RQ1
+### 8.1 Tabela consolidada da RQ1
 
 Média ± desvio-padrão entre os 5 folds. **Apenas o SVM é comparável à Tabela 3.**
 
@@ -461,7 +461,7 @@ Referência do artigo (Tabela 3): GBT 0,9612 / 1,3727 / 0,7318; LR 1,0149 / 1,46
 
 **Conclusão:** o SVM reproduz o artigo; RF, XGB e GBT estão parciais; a LR com 58 features não foi executada. A RQ1 da réplica está incompleta e não permite ranking estatístico.
 
-### 7.2 Holdout complementar
+### 8.2 Holdout complementar
 
 | Modelo | Representação | Treino → teste | MAE | RMSE | AUC |
 | --- | --- | ---: | ---: | ---: | ---: |
@@ -477,7 +477,7 @@ Referência do artigo (Tabela 3): GBT 0,9612 / 1,3727 / 0,7318; LR 1,0149 / 1,46
 
 Os holdouts de RF/XGB/GBT são recortes das amostras; apenas LR e SVM usam a base completa. A AUC do baseline LR não foi registrada.
 
-### 7.3 TF-IDF × 58 features
+### 8.3 TF-IDF × 58 features
 
 | Modelo | MAE 58 features | MAE TF-IDF | Δ (TF-IDF − 58) | Status |
 | --- | ---: | ---: | ---: | --- |
@@ -490,15 +490,15 @@ Em todas as comparações disponíveis, o TF-IDF teve MAE menor. A diferença é
 
 A **LR + TF-IDF** do baseline (MAE 0,6819; RMSE 1,0619; acurácia 0,4898; F1 macro 0,4862 no teste oficial) não tem contraparte com 58 features nesta etapa, porque a LR do artigo não foi reexecutada. Por isso ela não entra na tabela acima; serve como referência do baseline TF-IDF e não deve ser comparada à linha Logistic Regression da Tabela 3.
 
-### 7.4 Decisão sobre as duplicatas
+### 8.4 Decisão sobre as duplicatas
 
 As 280 combinações distintas (351 ocorrências) de (`categoria`, `text`, `rating`) entre treino e teste foram **mantidas**. Remover duplicatas mudaria a base do artigo e invalidaria a comparação direta; o artigo não discute o problema. A limitação fica registrada: o modelo pode ter visto no treino exemplos do teste, o que tende a **inflar** as métricas. O mesmo vale para as duplicatas dentro de cada split (949 linhas repetidas no treino e 104 no teste, além da primeira ocorrência), que não foram tratadas.
 
-### 7.5 LR do artigo × LR da réplica
+### 8.5 LR do artigo × LR da réplica
 
 A linha da Tabela 3 é **Logistic Regression com as 58 features** (MAE 1,0149 ± 0,0043; RMSE 1,4691 ± 0,0042; AUC 0,7328 ± 0,0064). A LR da réplica usa **TF-IDF** e tem MAE 0,6819, RMSE 1,0619, acurácia 0,4898 e F1 macro 0,4862 no teste oficial. São experimentos diferentes: a LR da réplica **não** reproduz a linha da Tabela 3 e não deve ser comparada a ela. A LR com 58 features continua pendente.
 
-### 7.6 Pendências para completar a RQ1
+### 8.6 Pendências para completar a RQ1
 
 1. Executar Random Forest no protocolo completo (grid de 19.440, `n_iter=300`).
 2. Executar XGBoost no protocolo completo (grid de 26.244, `n_iter=300`).

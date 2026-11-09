@@ -87,6 +87,7 @@ A documentação consolidada do projeto está em:
 │   ├── train_baseline_validation.py
 │   ├── compare_normalization.py
 │   ├── train_article_model.py
+│   ├── monitor_regressao_logistica.py
 │   ├── train_svm_tfidf.py
 │   ├── train_random_forest_tfidf.py
 │   ├── train_xgboost_tfidf.py
@@ -94,7 +95,7 @@ A documentação consolidada do projeto está em:
 ├── src/
 │   ├── data/splitting.py
 │   ├── preprocessing/{normalization,encoding,embedding}.py
-│   ├── models/{article_protocol,baseline,svm,random_forest,xgboost,gradient_boosting}.py
+│   ├── models/{article_protocol,baseline,svm,random_forest,xgboost,gradient_boosting,logistic_regression}.py
 │   ├── evaluation/{metrics,plots}.py
 │   └── utils/
 ├── tests/                        # Testes automatizados (pytest)
@@ -380,6 +381,41 @@ Saídas (`<m>` = `gradient_boosting`):
 
 `scripts/train_gradient_boosting_tfidf.py` reutiliza o TF-IDF da Issue 6 (`ensure_tfidf`), faz uma busca curta (`--n-iter 6`, 3 folds, RMSE) só no treino e avalia no teste oficial; `--no-search` usa parâmetros fixos. A comparação com `baseline_logreg.json` só se grava na base completa. As decisões e diferenças em relação ao artigo estão em [`docs/diferencas.md`](docs/diferencas.md), seção 5.
 
+## Protocolo do artigo: Regressão Logística com as 58 features (RQ1)
+
+A Regressão Logística (`LogisticRegression` de `src/models/logistic_regression.py`) usa o mesmo protocolo das seções anteriores; muda o estimador e o grid, extraído de `code/RQ1/scripts/logistic_regression.py` do repositório original:
+
+| Argumento | Padrão | Descrição |
+| --- | --- | --- |
+| `--model` | *(obrigatório)* | `logistic_regression` |
+
+Os demais argumentos (`--n-splits`, `--seed`, `--sample-n`, `--output-dir`, `--shuffle`, `--n-jobs`, `--verbose`, `--train`, `--test`) são iguais aos da seção SVM.
+
+**Grid**: `C` ∈ {0,01; 0,1; 1; 10; 100} × `solver` ∈ {newton-cg, lbfgs, liblinear, sag, saga} × `class_weight` ∈ {None, balanced} × `random_state` ∈ {None} × `max_iter` ∈ {10000} = **50 combinações**; com o `n_iter=300` do artigo, a busca é exaustiva nas 50, como no SVM. As features não são padronizadas (fidelidade ao artigo; `max_iter=10000` compensa). Observação: no scikit-learn 1.9.1, `liblinear` **não suporta** multiclasse (o esquema OvR dos solvers não binários foi removido); os 10 candidatos `liblinear` do grid falham com score NaN, o ranking os ignora e os demais 40 avaliam normalmente — diferenças registradas em [`docs/diferencas.md`](docs/diferencas.md), seção 7.
+
+```bash
+python scripts/train_article_model.py --model logistic_regression --sample-n 2000   # modo rápido
+python scripts/train_article_model.py --model logistic_regression                   # protocolo completo
+
+# Execução completa acompanhada (em dois terminais ou em um + background):
+python scripts/train_article_model.py --model logistic_regression --verbose 11 \
+    > results/logistic_regression_run.log 2>&1
+python scripts/monitor_regressao_logistica.py --log results/logistic_regression_run.log
+```
+
+Saídas (`<m>` = `logistic_regression`): `results/metrics/logistic_regression_rq1.json`,
+`logistic_regression_rq1_folds.csv`, `logistic_regression_rq1_holdout.json` e
+`results/figures/confusion_matrix_logistic_regression.png`. A contraparte **TF-IDF** desta LR
+já existe: é o **baseline** da Issue 7 (`results/metrics/baseline_logreg.json`), que também leva
+a comparação TF-IDF × 58 features. As decisões e diferenças em relação ao artigo estão em
+[`docs/diferencas.md`](docs/diferencas.md), seção 7.
+
+O `monitor_regressao_logistica.py` lê o log da execução e mostra no terminal, a cada 2 s,
+a fase (dados → busca → avaliação → concluído), o % de ajustes concluídos (250 na busca =
+50 candidatos × 5 folds; 6 na avaliação = 5 folds + holdout), o tempo decorrido na fase e o
+ETA, repetindo o resumo das métricas e os caminhos dos artefatos ao concluir. `--candidatos`,
+`--n-iter`, `--n-splits` e `--sem-holdout` ajustam os denominadores em execuções diferentes.
+
 ## Testes automatizados
 
 Os testes ficam em `tests/` e usam [pytest](https://docs.pytest.org/). Com o ambiente virtual ativado, na raiz do repositório:
@@ -409,6 +445,8 @@ Cobertura por etapa do pipeline:
 | Random Forest (RQ1) | `test_random_forest.py` |
 | XGBoost (RQ1) | `test_xgboost.py` |
 | Gradient Boosting (RQ1) | `test_gradient_boosting.py` |
+| Regressão Logística (RQ1) | `test_logistic_regression.py` (CLI em `test_train_article_model.py`) |
+| Monitor de progresso (RQ1) | `test_monitor_regressao_logistica.py` |
 
 Observações:
 
