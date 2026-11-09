@@ -245,7 +245,8 @@ Comentários curtos produzem muitos zeros. No artigo, isso motivou a escolha de 
 ├── notebooks/
 │   ├── auditoria_dados.ipynb     # Análise exploratória dos textos
 │   ├── baseline_logreg_colab.ipynb
-│   └── baseline_logreg_validation_colab.ipynb
+│   ├── baseline_logreg_validation_colab.ipynb
+│   └── logistic_regression_rq1_colab.ipynb
 ├── results/
 │   ├── figures/                  # Matrizes de confusão (PNG)
 │   ├── metrics/                  # JSON/CSV versionados

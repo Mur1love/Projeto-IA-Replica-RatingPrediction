@@ -75,7 +75,8 @@ A documentação consolidada do projeto está em:
 ├── notebooks/
 │   ├── auditoria_dados.ipynb
 │   ├── baseline_logreg_colab.ipynb
-│   └── baseline_logreg_validation_colab.ipynb
+│   ├── baseline_logreg_validation_colab.ipynb
+│   └── logistic_regression_rq1_colab.ipynb
 ├── results/
 │   ├── figures/                  # Matrizes de confusão (PNG)
 │   ├── metrics/                  # JSON/CSV versionados
@@ -415,6 +416,11 @@ a fase (dados → busca → avaliação → concluído), o % de ajustes concluí
 50 candidatos × 5 folds; 6 na avaliação = 5 folds + holdout), o tempo decorrido na fase e o
 ETA, repetindo o resumo das métricas e os caminhos dos artefatos ao concluir. `--candidatos`,
 `--n-iter`, `--n-splits` e `--sem-holdout` ajustam os denominadores em execuções diferentes.
+
+**Alternativa no Google Colab:** o notebook [`notebooks/logistic_regression_rq1_colab.ipynb`](notebooks/logistic_regression_rq1_colab.ipynb)
+clona esta branch, baixa os splits do repositório original (ou aceita upload manual dos CSVs)
+e roda o mesmo protocolo (busca exaustiva de 50 candidatos, ~2–3 h no Colab gratuito, com
+progresso por fit no output e cópia dos artefatos para o Drive).
 
 ## Testes automatizados
 
