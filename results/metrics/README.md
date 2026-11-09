@@ -115,23 +115,39 @@ Leitura das métricas: `auc` é a AUC do artigo (classes 4–5 estrelas positiva
 binárias); `auc_scores` é um diagnóstico a partir das **probabilidades** (`predict_proba`). MAE e RMSE
 estão na escala de 1 a 5 estrelas.
 
-## Regressão Logística com as 58 features do artigo (RQ1)
+## Regressão Logística com as 58 features do artigo (RQ1) — modo rápido
 
-Comando do protocolo: `python scripts/train_article_model.py --model logistic_regression` (base
-completa, 5 folds, grid de 50 combinações de `code/RQ1/scripts/logistic_regression.py` do repositório
-original, `n_iter=300` → busca exaustiva; seed 42) e monitor
-`python scripts/monitor_regressao_logistica.py --log results/logistic_regression_run.log`
-(exige `--verbose 11`). A contraparte **TF-IDF** é o próprio baseline da Issue 7
-(`baseline_logreg.json`), o que completa a comparação TF-IDF × 58 features.
+Executado em **modo rápido** (amostra de 2.000; execução completa pendente). Dois ambientes com
+resultados idênticos ao 4.º decimal (controle de reprodutibilidade): **Google Colab**
+(sklearn 1.6.1, 2 vCPU; busca ≈ 28,8 min) e **local** (sklearn 1.9.1, 10 núcleos; busca ≈ 91 s).
+Protocolo: 5 folds por `categoria_rating` sem embaralhar sobre a amostra, `RandomizedSearchCV`
+exaustivo nas **50 combinações** do grid de `code/RQ1/scripts/logistic_regression.py` do repositório
+original (`C` × `solver` × `class_weight`, `max_iter=10000`), RMSE, seed 42; holdout da amostra.
+Melhores hiperparâmetros da amostra: `newton-cg, C=1, class_weight=None` (não comparáveis aos do
+artigo, `lbfgs, C=100`).
 
-Artefatos versionados: `logistic_regression_rq1.json` (melhores parâmetros, médias/desvios/ICs e
-comparação com a linha Logistic Regression da Tabela 3), `logistic_regression_rq1_folds.csv`,
-`logistic_regression_rq1_holdout.json` e `../figures/confusion_matrix_logistic_regression.png`
-(predições fora-da-dobra dos 5 folds).
+| Métrica | Média ± desvio | IC 95% |
+| --- | --- | --- |
+| MAE | 1,0230 ± 0,0515 | [0,9591; 1,0869] |
+| RMSE | 1,4548 ± 0,0579 | [1,3828; 1,5267] |
+| AUC | 0,7266 ± 0,0338 | [0,6847; 0,7686] |
+| Acurácia | 0,3630 ± 0,0233 | [0,3341; 0,3919] |
+| F1 macro | 0,3477 ± 0,0257 | [0,3158; 0,3796] |
 
-Diferença de ambiente: no scikit-learn 1.9.1, `liblinear` não suporta multiclasse (OvR removido);
-os 10 candidatos `liblinear` do grid do artigo falham com score NaN e o ranking os ignora.
-Detalhes em [`docs/diferencas.md`](../../docs/diferencas.md), seção 7.
+Holdout da amostra (1.600 → 400): MAE 1,0048; RMSE 1,4082; AUC 0,7598; acurácia 0,3656; F1 0,3513.
+**Números amostrais — não comparáveis à linha Logistic Regression da Tabela 3** (desvio ~8× o
+publicado); detalhes, por fold e matriz em [`docs/diferencas.md`](../../docs/diferencas.md), seção 7.
+A contraparte **TF-IDF** é o próprio baseline da Issue 7 (`baseline_logreg.json`).
+
+Artefatos versionados: `logistic_regression_rq1.json` (`sample_n=2000`, `n_candidates_evaluated=50`,
+bloco `article.comparison`, versão do sklearn de cada execução), `logistic_regression_rq1_folds.csv`,
+`logistic_regression_rq1_holdout.json`, `../figures/confusion_matrix_logistic_regression.png`
+(predições fora-da-dobra dos 5 folds da amostra). A execução completa grava nos **mesmos caminhos**
+e substitui estes artefatos, com `sample_n=null`.
+
+Diferença de ambiente: `liblinear` não suporta multiclasse no scikit-learn ≥1.8 (OvR removido); os
+10 candidatos `liblinear` do grid do artigo falham com score NaN e o ranking os ignora. Notebook do
+Colab: `notebooks/logistic_regression_rq1_colab.ipynb`.
 
 ## Consolidação da RQ1 (estado atual)
 
@@ -144,10 +160,11 @@ mas foram executadas em amostra ou modo rápido e **não são comparáveis à Ta
 | Random Forest | Amostra 5.000, 1 candidato | 1,0784 ± 0,0200 | 1,5165 ± 0,0296 | 0,7168 ± 0,0110 | Parcial |
 | XGBoost | Modo rápido 2.000, 20 candidatos | 1,0215 ± 0,0327 | 1,4337 ± 0,0490 | 0,7204 ± 0,0306 | Parcial |
 | Gradient Boosting | Modo rápido 2.000, 5 candidatos | 1,0400 ± 0,0549 | 1,4527 ± 0,0584 | 0,7072 ± 0,0133 | Parcial |
-| Regressão Logística | LR + TF-IDF (não é a LR do artigo) | 0,6819 | 1,0619 | n/d | Adicional; 58 features pendente |
+| Regressão Logística | Modo rápido 2.000, 50 candidatos | 1,0230 ± 0,0515 | 1,4548 ± 0,0579 | 0,7266 ± 0,0338 | Parcial; completa pendente |
+| Regressão Logística + TF-IDF | Completa (não é a LR do artigo) | 0,6819 | 1,0619 | n/d | Adicional (baseline) |
 
 Referência do artigo (Tabela 3): GBT 0,9612 / 1,3727 / 0,7318; LR 1,0149 / 1,4691 / 0,7328;
 RF 0,9717 / 1,4001 / 0,7367; XGB 0,9499 / 1,3721 / 0,7390; SVM 1,0431 / 1,5085 / 0,7304.
 A consolidação completa, o holdout e a comparação TF-IDF × 58 features estão em
-[`docs/diferencas.md`](../../docs/diferencas.md), seção 7, e em
+[`docs/diferencas.md`](../../docs/diferencas.md), seção 8, e em
 [`docs/documentacao.md`](../../docs/documentacao.md), seção 10.

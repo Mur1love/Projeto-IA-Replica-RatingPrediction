@@ -52,9 +52,10 @@ A documentação consolidada do projeto está em:
 | Random Forest com as 58 features (RQ1) | Parcial: amostra de 5.000 linhas, 1 candidato | `results/metrics/random_forest_rq1*.json` e `docs/diferencas.md` §6 |
 | XGBoost com as 58 features (RQ1) | Parcial: modo rápido (2.000 linhas) | `results/sample/` e `docs/diferencas.md` §4 |
 | Gradient Boosting com as 58 features (RQ1) | Parcial: modo rápido (2.000 linhas) | `results/sample/` e `docs/diferencas.md` §5 |
+| Regressão Logística com as 58 features (RQ1) | Parcial: modo rápido (2.000 linhas; Colab + local) | `results/metrics/logistic_regression_rq1*.json` e `docs/diferencas.md` §7 |
 | PP2, PP3 e PP4 | Pendentes | — |
 
-> **Importante:** apenas o SVM foi executado no protocolo completo do artigo. Os números de Random Forest, XGBoost e Gradient Boosting não são comparáveis à Tabela 3. Veja a consolidação em [`docs/diferencas.md`](docs/diferencas.md), seção 7, e em [`docs/documentacao.md`](docs/documentacao.md), seção 10.
+> **Importante:** apenas o SVM foi executado no protocolo completo do artigo. Os números de Random Forest, XGBoost, Gradient Boosting e Regressão Logística não são comparáveis à Tabela 3. Veja a consolidação em [`docs/diferencas.md`](docs/diferencas.md), seção 8, e em [`docs/documentacao.md`](docs/documentacao.md), seção 10.
 
 ## Estrutura do repositório
 
@@ -416,6 +417,11 @@ a fase (dados → busca → avaliação → concluído), o % de ajustes concluí
 50 candidatos × 5 folds; 6 na avaliação = 5 folds + holdout), o tempo decorrido na fase e o
 ETA, repetindo o resumo das métricas e os caminhos dos artefatos ao concluir. `--candidatos`,
 `--n-iter`, `--n-splits` e `--sem-holdout` ajustam os denominadores em execuções diferentes.
+
+**Estado da execução:** os artefatos versionados (`logistic_regression_rq1*.json` e a matriz
+`confusion_matrix_logistic_regression.png`) correspondem ao **modo rápido** (amostra de 2.000), executado no Google Colab (sklearn 1.6.1, 2 vCPU, busca ≈ 29 min) e reproduzido localmente
+(sklearn 1.9.1, 10 núcleos, 91 s) com resultados idênticos ao 4.º decimal — controle de
+reprodutibilidade registrado em [`docs/diferencas.md`](docs/diferencas.md), seção 7.3. A **execução completa** (comparável à Tabela 3) grava nos mesmos caminhos e substitui o modo rápido.
 
 **Alternativa no Google Colab:** o notebook [`notebooks/logistic_regression_rq1_colab.ipynb`](notebooks/logistic_regression_rq1_colab.ipynb)
 clona esta branch, baixa os splits do repositório original (ou aceita upload manual dos CSVs)

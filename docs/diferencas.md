@@ -13,11 +13,11 @@ Este documento registra onde a réplica se afasta do artigo *Rating Prediction i
 | Random Forest (RQ1) | 58 features, 5 folds, `n_iter=300`, `random_state=None` | Modelo e grid implementados; execução versionada é uma amostra de 5.000 linhas com 1 candidato e `random_state=42` | A execução completa do grid de 19.440 combinações **não** foi feita; os números não são comparáveis à Tabela 3. Seção 6. |
 | Gradient Boosting (RQ1) | Grid de 2160 combinações, `n_iter=300` | Mesmo grid e protocolo; nesta etapa só o **modo rápido** foi executado (`--sample-n 2000`, `n_iter=5`) | Execução completa pendente; números não comparáveis. Seções 5.2 e 5.3. |
 | XGBoost (RQ1) | 58 features, 5 folds, `n_iter=300` | Apenas modo rápido (`--sample-n 2000`, `n_iter=20`) | Execução completa interrompida por hardware; números não comparáveis. Seção 4. |
-| Regressão Logística (RQ1) | LR com 58 features (linha da Tabela 3) | LR + **TF-IDF** no baseline; LR com 58 features no protocolo completo (seção 7) | A LR da réplica com 58 elementos é a reprodução da linha da Tabela 3; a LR + TF-IDF da issue #7 é adicional. Seção 8.5. |
-| TF-IDF × 58 features | Não existe no artigo (TF-IDF é trabalho futuro) | Comparação complementar para SVM e LR (completas), RF (amostra), XGB e GBT (modo rápido) | Experimento próprio; resultados indicativos, sem teste estatístico. Seção 8.3. |
+| Regressão Logística (RQ1) | LR com 58 features (linha da Tabela 3) | LR + **TF-IDF** no baseline; LR com 58 features em **modo rápido** (amostra de 2.000, seção 7) | A comparação com a Tabela 3 exige a execução completa, pendente. A LR + TF-IDF da issue #7 é adicional. Seções 7 e 8.5. |
+| TF-IDF × 58 features | Não existe no artigo (TF-IDF é trabalho futuro) | Comparação para SVM (completa), RF (amostra), XGB, GBT e LR (modo rápido/amostral) | Experimento próprio; resultados indicativos, sem teste estatístico. Seção 8.3. |
 | IC de 95% | IC calculado com a linha da média incluída (6 valores, 5 g.l.) | IC calculado só entre os 5 folds (5 valores, 4 g.l.) | O IC publicado é cerca de 24% mais estreito. Seção 3.3. |
 | Duplicatas treino/teste | Não discutidas no artigo | 280 combinações (`categoria`, `text`, `rating`) aparecem nos dois splits (351 ocorrências) | Herdado do split oficial; mantido por fidelidade e pode inflar as métricas. Ver `data/README.md` e seção 8.4. |
-| Status geral da RQ1 | Cinco modelos completos | SVM e Regressão Logística executados no protocolo completo com as 58 features | RF, XGB e GBT são parciais (amostra/modo rápido); a RQ1 da réplica tem 2 linhas comparáveis à Tabela 3. Seções 7 e 8. |
+| Status geral da RQ1 | Cinco modelos completos | SVM no protocolo completo; LR em modo rápido (amostra de 2.000) | RF, XGB e GBT são parciais (amostra/modo rápido); a RQ1 da réplica tem **1 linha comparável** (SVM) à Tabela 3. Seções 7 e 8. |
 
 ## 2. Normalização de texto: com e sem
 
@@ -443,6 +443,80 @@ python scripts/train_random_forest_tfidf.py --sample-n 2000                     
 - O `param_grid` do JSON não corresponde ao grid do código; trate os números como smoke test, não como protocolo.
 - O TF-IDF remove 1 linha de `text` vazio por split; o RF com 58 features mantém todas.
 
+## 7. Regressão Logística com as 58 features (RQ1)
+
+A LR completa a lista de modelos da RQ1. Nesta etapa foi executada no **modo rápido** (amostra de 2.000), o mesmo critério do XGBoost (seção 4) e do Gradient Boosting (seção 5); a execução completa — a que é comparável à Tabela 3 — **continua pendente**. Quando acontecer, ela grava nos mesmos caminhos de `results/metrics/` (substituindo os amostrais) e as subseções 7.3, 8.1 e 8.5 serão atualizadas.
+
+### 7.1 O que foi implementado
+
+`src/models/logistic_regression.py` define `LOGISTIC_REGRESSION_SPEC` com o grid exato de `code/RQ1/scripts/logistic_regression.py` do repositório original:
+
+| Item | Artigo | Réplica |
+| --- | --- | --- |
+| Dados | `train.csv` + `test.csv` concatenados (51.465 linhas) | Igual no protocolo; nesta etapa, amostra de 2.000 (o teste participa da validação cruzada) |
+| Features | 58 (`str_`, `pos_`, `synt_`, `lex_`, `conc_`, `twt_`, `sbj_`) | Igual; `categoria`, `text` e `rating` ficam fora; textos vazios mantidos |
+| Folds | `StratifiedKFold(5, shuffle=False)` por `categoria_rating` | Igual |
+| Busca | `RandomizedSearchCV`, `n_iter=300`, RMSE, `random_state=42` | Igual; grid de 50 combinações → **exaustiva nas 50** (aviso do sklearn registrado no JSON) |
+| Grid | `C` ∈ {0,01; 0,1; 1; 10; 100} × `solver` ∈ {newton-cg, lbfgs, liblinear, sag, saga} × `class_weight` ∈ {None, balanced}, com `max_iter=10000` e `random_state=None` | Igual: **5 × 5 × 2 = 50 combinações** (teste fixa o grid) |
+| Métricas | MAE, RMSE, AUC (classes 4–5 positivas, predições binárias) | Igual, mais F1 macro, acurácia e AUC de diagnóstico por `decision_function` |
+| Holdout | — | Treino no `train.csv` da amostra, avaliação no `test.csv` da amostra |
+| Melhores do artigo | `solver=lbfgs, C=100, class_weight=None` (`LogisticRegression_best_params.txt`) |Registrados em `ARTICLE_BEST_PARAMS` |
+
+### 7.2 Diferenças em relação ao artigo
+
+1. **`liblinear` não resolve multiclasse no scikit-learn atual.** O esquema *one-vs-rest* era exclusivo do `liblinear` e foi descontinuado (deprecado na 1.5 e removido nas versões seguintes): no scikit-learn 1.9.1 o `LogisticRegression` levanta erro para ≥ 3 classes. Dos 50 candidatos do grid, os **10 `liblinear`** (5 `C` × 2 `class_weight`) falham em cada fold com resultado NaN (`FitFailedWarning`); a busca avalia as 50 (o JSON registra `n_candidates_evaluated=50`), mas o ranking considera só os 40 válidos. No código original (sklearn antigo), os 10 avaliavam como OvR. Os melhores hiperparâmetros do artigo (`lbfgs`, `C=100`) continuam alcançáveis; coberto pelo teste `test_liblinear_multiclasse_falha_no_sklearn_atual`.
+2. **Versões não pinadas no Colab.** A execução no **Colab** usou scikit-learn **1.6.1** (numpy/pandas do Colab, prática dos notebooks da equipe, seção de reprodução); a reexecução local usou **1.9.1** (`requirements.txt`). As métricas coincidiram ao 4.º decimal — o JSON registra a versão de cada execução (mesma prática do Random Forest com 1.8.0, seção 6.2).
+3. **Sem padronização das features,** como no artigo (mesma justificativa da seção 3.2, item 2); com `max_iter=10000` do grid. Avisos de convergência de `lbfgs`/`sag`/`saga` com `C` pequeno são esperados e aparecem no log.
+4. **`refit=False` na busca e IC de 95% com `n_folds − 1` g.l.** — mesmos motivos das seções 3.2 (item 5) e 3.3.
+5. **Execução distribuída (Colab + local).** O modo rápido rodou no Colab free (2 vCPU) e foi reproduzido localmente (10 núcleos, 91 s de busca contra ≈ 1.730 s do Colab); os resultados são idênticos — ver 7.3.
+
+### 7.3 Resultado do modo rápido (execuções Colab e local)
+
+Execução no Colab: amostra de 2.000, 50 candidatos × 5 folds, seed 42, busca em ≈ 28,8 min. A reexecução local reproduziu os mesmos agregados ao 4.º decimal (controle de reprodutibilidade). Melhores hiperparâmetros da amostra: `solver=newton-cg, C=1, class_weight=None` — **não comparáveis** aos do artigo; com 1.600 linhas por fold e 40 candidatos válidos, o ranking não é conclusivo.
+
+Comparação com a Tabela 3 — **os números não devem ser lidos como reprodução**:
+
+| Métrica | Artigo (Tabela 3) | Réplica *modo rápido* | Δ da média | IC 95% da amostra |
+| --- | --- | --- | ---: | --- |
+| MAE | 1,0149 ± 0,0043 | 1,0230 ± 0,0515 | +0,0081 | [0,9591; 1,0869] |
+| RMSE | 1,4691 ± 0,0042 | 1,4548 ± 0,0579 | −0,0143 | [1,3828; 1,5267] |
+| AUC | 0,7328 ± 0,0064 | 0,7266 ± 0,0338 | −0,0062 | [0,6847; 0,7686] |
+
+Outras métricas (não constam na Tabela 3): acurácia 0,3630 ± 0,0233, IC [0,3341; 0,3919]; F1 macro 0,3477 ± 0,0257, IC [0,3158; 0,3796]. **Holdout da amostra** (treino 1.600 → teste 400): MAE 1,0048; RMSE 1,4082; AUC 0,7598; acurácia 0,3656; F1 0,3513.
+
+Métricas por fold da amostra (`logistic_regression_rq1_folds.csv`):
+
+| Fold | n_train | n_test | MAE | RMSE | F1 macro | Acurácia | AUC | AUC por scores |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 1.600 | 400 | 1,0000 | 1,4577 | 0,3703 | 0,3850 | 0,7294 | 0,8143 |
+| 2 | 1.600 | 400 | 1,1075 | 1,5387 | 0,3064 | 0,3250 | 0,6719 | 0,7586 |
+| 3 | 1.600 | 400 | 0,9800 | 1,4124 | 0,3683 | 0,3775 | 0,7438 | 0,8083 |
+| 4 | 1.600 | 400 | 1,0350 | 1,4748 | 0,3475 | 0,3600 | 0,7259 | 0,7973 |
+| 5 | 1.600 | 400 | 0,9925 | 1,3901 | 0,3458 | 0,3675 | 0,7622 | 0,8259 |
+
+**Leitura:**
+
+- O desvio-padrão entre folds na amostra (≈0,05) é ~8× o do artigo (≈0,004): o esperado com 1/26 do treino por fold; o fold 2 é o pior (MAE 1,1075) e explica boa parte do desvio.
+- As médias do artigo ficam **dentro** do IC da amostra nas três métricas: a execução amostral não replica nem refuta a Tabela 3.
+- Diagonal da matriz de confusão fora-da-dobra: 726/2.000 = 36,3%, igual à acurácia agregada.
+- **Controle de reprodutibilidade:** Colab (sklearn 1.6.1, 2 vCPU) e local (sklearn 1.9.1, 10 núcleos) coincidem ao 4.º decimal em todas as métricas e fold a fold, com os mesmos melhores hiperparâmetros — a amostragem e os folds são determinísticos (seed 42).
+
+Artefatos **versionados** (amostra; serão substituídos pela execução completa): `results/metrics/logistic_regression_rq1.json` (com `sample_n=2000`, `n_candidates_evaluated=50` e o bloco `article.comparison`), `logistic_regression_rq1_folds.csv`, `logistic_regression_rq1_holdout.json` e `results/figures/confusion_matrix_logistic_regression.png`.
+
+### 7.4 Comparação amostral com XGBoost e Gradient Boosting (referência fraca)
+
+Nos modos rápidos já registrados (mesma amostra de 2.000; **número de candidatos diferente por modelo**): XGB MAE 1,0215 ± 0,0327 (seção 4.4); GBT 1,0400 ± 0,0549 (seção 5.3); LR 1,0230 ± 0,0515 (7.3). A LR fica no mesmo patamar dos dois — indício de viabilidade, **não** um ranking: candidatos, hiperparâmetros e Amostragem diferem por execução, e não há teste estatístico.
+
+### 7.5 Como reproduzir
+
+```bash
+python scripts/train_article_model.py --model logistic_regression --sample-n 2000   # modo rápido (≈2–3 min local/10 núcleos; ≈29 min no Colab free)
+python scripts/train_article_model.py --model logistic_regression                   # COMPLETA (pendente; grava nos mesmos caminhos)
+python scripts/monitor_regressao_logistica.py --log results/logistic_regression_run.log  # com --verbose 11: fases, %, ETA
+```
+
+Notebook do Colab: `notebooks/logistic_regression_rq1_colab.ipynb` — clona esta branch, baixa os splits do repositório original (ou aceita upload manual), executa modo rápido e a execução completa (~2–2,5 h nas 2 vCPU) com progresso por fit no output e cópia dos artefatos para o Drive; compara com a Tabela 3 ao final. Comando de lançamento independente do terminal (usado na execução amostral local): `PYTHONUNBUFFERED=1` recomendado para o log fluir em tempo real (os workers do joblib bufferiam as linhas `[CV]`).
+
 ## 8. Consolidação da RQ1, TF-IDF × 58 features e pendências
 
 ### 8.1 Tabela consolidada da RQ1
@@ -455,11 +529,11 @@ Média ± desvio-padrão entre os 5 folds. **Apenas o SVM é comparável à Tabe
 | Random Forest | Amostra 5.000, 1 candidato | 1,0784 ± 0,0200 | 1,5165 ± 0,0296 | 0,7168 ± 0,0110 | 0,3532 ± 0,0122 | 0,3300 ± 0,0157 |
 | XGBoost | Modo rápido 2.000, 20 candidatos | 1,0215 ± 0,0327 | 1,4337 ± 0,0490 | 0,7204 ± 0,0306 | 0,3535 ± 0,0153 | 0,3485 ± 0,0178 |
 | Gradient Boosting | Modo rápido 2.000, 5 candidatos | 1,0400 ± 0,0549 | 1,4527 ± 0,0584 | 0,7072 ± 0,0133 | n/d | n/d |
-| Regressão Logística (artigo) | **Não executada** | 1,0149 ± 0,0043 | 1,4691 ± 0,0042 | 0,7328 ± 0,0064 | — | — |
+| Regressão Logística | Modo rápido 2.000, 50 candidatos (10 `liblinear` falham) | 1,0230 ± 0,0515 | 1,4548 ± 0,0579 | 0,7266 ± 0,0338 | 0,3630 ± 0,0233 | 0,3477 ± 0,0257 |
 
 Referência do artigo (Tabela 3): GBT 0,9612 / 1,3727 / 0,7318; LR 1,0149 / 1,4691 / 0,7328; RF 0,9717 / 1,4001 / 0,7367; XGB 0,9499 / 1,3721 / 0,7390; SVM 1,0431 / 1,5085 / 0,7304.
 
-**Conclusão:** o SVM reproduz o artigo; RF, XGB e GBT estão parciais; a LR com 58 features não foi executada. A RQ1 da réplica está incompleta e não permite ranking estatístico.
+**Conclusão:** o SVM reproduz o artigo; RF, XGB, GBT e LR estão parciais (amostra/modo rápido). A RQ1 da réplica tem **1 linha comparável à Tabela 3** (SVM; LR completa pendente) e ainda não permite ranking estatístico dos cinco algoritmos.
 
 ### 8.2 Holdout complementar
 
@@ -474,8 +548,9 @@ Referência do artigo (Tabela 3): GBT 0,9612 / 1,3727 / 0,7318; LR 1,0149 / 1,46
 | XGBoost | TF-IDF | 2.000 → 500 | 0,9420 | 1,3409 | 0,7267 |
 | Gradient Boosting | 58 features | 1.587 → 413 | 1,0726 | 1,4901 | 0,7422 |
 | Gradient Boosting | TF-IDF | 2.000 → 500 | 0,9260 | 1,3364 | 0,7333 |
+| Regressão Logística | 58 features | 1.600 → 400 (amostra) | 1,0048 | 1,4082 | 0,7598 |
 
-Os holdouts de RF/XGB/GBT são recortes das amostras; apenas LR e SVM usam a base completa. A AUC do baseline LR não foi registrada.
+Os holdouts de RF/XGB/GBT/LR são recortes das amostras; apenas LR + TF-IDF e SVM usam a base completa. A AUC do baseline LR não foi registrada.
 
 ### 8.3 TF-IDF × 58 features
 
@@ -485,10 +560,11 @@ Os holdouts de RF/XGB/GBT são recortes das amostras; apenas LR e SVM usam a bas
 | Random Forest | 1,1087 | 0,8088 | −0,2999 | Amostral, treinos diferentes |
 | XGBoost | 1,0508 | 0,9420 | −0,1088 | Modo rápido, treinos diferentes |
 | Gradient Boosting | 1,0726 | 0,9260 | −0,1466 | Modo rápido, treinos diferentes |
+| Regressão Logística | 1,0048 (amostra, holdout) | 0,6819 (completo) | −0,3229 | Modo rápido × baseline completo |
 
-Em todas as comparações disponíveis, o TF-IDF teve MAE menor. A diferença é grande no SVM completo e menor nos modos rápidos. Ressalvas: o TF-IDF remove 1 linha vazia por split; o SVM com 58 features usa hiperparâmetros buscados e o com TF-IDF usa parâmetros fixos; os modos rápidos usam amostras e treinos de tamanhos diferentes; não há teste estatístico. A comparação é **indicativa**, não conclusiva, e não mede o efeito das 58 features no protocolo completo dos demais modelos.
+Em todas as comparações disponíveis, o TF-IDF teve MAE menor. A diferença é grande no SVM completo e nos outros modos rápidos. Ressalvas: o TF-IDF remove 1 linha vazia por split; o SVM com 58 features usa hiperparâmetros buscados e o com TF-IDF usa parâmetros fixos; os modos rápidos usam amostras e treinos de tamanhos diferentes (a LR da amostra avalia holdout de 400 linhas contra o teste oficial de 10.292 do baseline); não há teste estatístico. A comparação é **indicativa**, não conclusiva, e não mede o efeito das 58 features no protocolo completo dos demais modelos.
 
-A **LR + TF-IDF** do baseline (MAE 0,6819; RMSE 1,0619; acurácia 0,4898; F1 macro 0,4862 no teste oficial) não tem contraparte com 58 features nesta etapa, porque a LR do artigo não foi reexecutada. Por isso ela não entra na tabela acima; serve como referência do baseline TF-IDF e não deve ser comparada à linha Logistic Regression da Tabela 3.
+A **LR + TF-IDF** do baseline (MAE 0,6819; RMSE 1,0619; acurácia 0,4898; F1 macro 0,4862 no teste oficial) mantém a contraparte com 58 features **amostral** (holdout 1,0048; acurácia 0,3656; F1 0,3513 — holdout de 400 linhas). É a mesma direção dos demais modelos (TF-IDF abaixo no MAE), mas o par 58 features × TF-IDF da LR só fica comparável quando a execução completa estiver registrada (seção 7). Os números amostrais não devem ser comparados à linha Logistic Regression da Tabela 3.
 
 ### 8.4 Decisão sobre as duplicatas
 
@@ -496,14 +572,14 @@ As 280 combinações distintas (351 ocorrências) de (`categoria`, `text`, `rati
 
 ### 8.5 LR do artigo × LR da réplica
 
-A linha da Tabela 3 é **Logistic Regression com as 58 features** (MAE 1,0149 ± 0,0043; RMSE 1,4691 ± 0,0042; AUC 0,7328 ± 0,0064). A LR da réplica usa **TF-IDF** e tem MAE 0,6819, RMSE 1,0619, acurácia 0,4898 e F1 macro 0,4862 no teste oficial. São experimentos diferentes: a LR da réplica **não** reproduz a linha da Tabela 3 e não deve ser comparada a ela. A LR com 58 features continua pendente.
+A linha da Tabela 3 é **Logistic Regression com as 58 features** (MAE 1,0149 ± 0,0043; RMSE 1,4691 ± 0,0042; AUC 0,7328 ± 0,0064). A LR da réplica usa **TF-IDF** (baseline da issue #7: MAE 0,6819, RMSE 1,0619, acurácia 0,4898, F1 macro 0,4862 no teste oficial) e tem, desde a seção 7, a contraparte **amostral** com as 58 features (modo rápido: MAE 1,0230 ± 0,0515). São experimentos diferentes: a LR + TF-IDF **não** reproduz a linha da Tabela 3; e a LR com 58 features só a reproduz **na execução completa**, ainda pendente — os números amostrais não fecham essa comparação.
 
 ### 8.6 Pendências para completar a RQ1
 
 1. Executar Random Forest no protocolo completo (grid de 19.440, `n_iter=300`).
 2. Executar XGBoost no protocolo completo (grid de 26.244, `n_iter=300`).
 3. Executar Gradient Boosting no protocolo completo (grid de 2.160, `n_iter` documentado).
-4. Executar a LR com as 58 features para completar a Tabela 3.
+4. Executar a LR com as 58 features **no protocolo completo** (o modo rápido da seção 7 já está registrado; a completa substitui os artefatos amostrais).
 5. Executar as comparações TF-IDF + RF/XGB/GBT na base completa.
 6. Rodar Friedman/Nemenyi para a PP1.
 7. Executar PP2 (grupos), PP3 (ablation/RFE) e PP4 (por categoria).

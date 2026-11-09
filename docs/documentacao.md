@@ -72,7 +72,7 @@ A réplica tem três objetivos:
 | Random Forest com 58 features | 5 folds, busca por RMSE | Implementado; execução versionada é uma amostra de 5.000 linhas | **Parcial** |
 | Gradient Boosting com 58 features | 5 folds, busca por RMSE | Implementado; apenas modo rápido (2.000 linhas) | **Parcial** |
 | XGBoost com 58 features | 5 folds, busca por RMSE | Implementado; apenas modo rápido (2.000 linhas) | **Parcial** |
-| Regressão Logística com 58 features | 5 folds, linha da Tabela 3 | **Não executada**; a LR da réplica usa TF-IDF | **Pendente** |
+| Regressão Logística com 58 features | 5 folds, linha da Tabela 3 | Implementada; **modo rápido** (amostra de 2.000, Colab e local); execução completa pendente | **Parcial** |
 | TF-IDF + Regressão Logística | Citado apenas como trabalho futuro | Baseline completo, validação 80/20 e teste oficial | **Adicional** |
 | Normalização textual | Não descrita no artigo | Sete variantes avaliadas | **Adicional** |
 | Comparação TF-IDF × 58 features | Não existe no artigo | SVM completo; RF/XGB/GBT em modo rápido ou amostra | **Adicional** |
@@ -793,7 +793,7 @@ IC 95% do modo rápido: MAE [0,9718; 1,1082], RMSE [1,3801; 1,5252], AUC [0,6907
 A LR aparece em dois papéis:
 
 1. **Baseline da réplica:** LR + TF-IDF, com `C=1.0`, `max_iter=1000`, `solver=lbfgs`, seed 42. Resultados completos na seção 6. **Não é a LR do artigo**, que usa as 58 features.
-2. **Linha da Tabela 3 do artigo:** LR com as 58 features, MAE 1,0149 ± 0,0043, RMSE 1,4691 ± 0,0042, AUC 0,7328 ± 0,0064. Essa configuração **não foi executada na réplica** e continua pendente.
+2. **Linha da Tabela 3 do artigo:** LR com as 58 features, MAE 1,0149 ± 0,0043, RMSE 1,4691 ± 0,0042, AUC 0,7328 ± 0,0064. Na réplica, essa configuração só existe no **modo rápido** (amostra de 2.000, `docs/diferencas.md` §7); a execução completa — comparável — continua pendente.
 
 ### 8.6 Resumo das execuções e tempos
 
@@ -882,8 +882,9 @@ O IC da réplica é mais largo que o publicado no artigo, porque o artigo inclui
 | Random Forest | Amostra 5.000, 1 candidato | 1,0784 ± 0,0200 | 1,5165 ± 0,0296 | 0,7168 ± 0,0110 | 0,3532 ± 0,0122 | 0,3300 ± 0,0157 | `random_forest_rq1.json` |
 | XGBoost | Modo rápido 2.000, 20 candidatos | 1,0215 ± 0,0327 | 1,4337 ± 0,0490 | 0,7204 ± 0,0306 | 0,3535 ± 0,0153 | 0,3485 ± 0,0178 | `docs/diferencas.md` §4 |
 | Gradient Boosting | Modo rápido 2.000, 5 candidatos | 1,0400 ± 0,0549 | 1,4527 ± 0,0584 | 0,7072 ± 0,0133 | n/d | n/d | `docs/diferencas.md` §5 |
+| Regressão Logística | Modo rápido 2.000, 50 candidatos | 1,0230 ± 0,0515 | 1,4548 ± 0,0579 | 0,7266 ± 0,0338 | 0,3630 ± 0,0233 | 0,3477 ± 0,0257 | `logistic_regression_rq1.json` (amostra) |
 
-> Apenas o SVM foi executado no protocolo completo. As linhas de RF, XGB e GBT **não são comparáveis** à Tabela 3 nem entre si, porque usam amostras, números de candidatos e/ou modos de execução diferentes. A coluna "n/d" indica métrica não registrada no texto disponível.
+> Apenas o SVM foi executado no protocolo completo. As linhas de RF, XGB, GBT e LR **não são comparáveis** à Tabela 3 nem entre si, porque usam amostras, números de candidatos e/ou modos de execução diferentes. A coluna "n/d" indica métrica não registrada no texto disponível.
 
 ### 10.2 Holdout: treino → teste oficial
 
@@ -898,15 +899,16 @@ O IC da réplica é mais largo que o publicado no artigo, porque o artigo inclui
 | XGBoost | TF-IDF | 2.000 → 500 (amostra) | 0,9420 | 1,3409 | 0,7267 | 0,3740 | 0,3734 | `docs/diferencas.md` §4.3 |
 | Gradient Boosting | 58 features | 1.587 → 413 (amostra) | 1,0726 | 1,4901 | 0,7422 | n/d | n/d | `docs/diferencas.md` §5.3 |
 | Gradient Boosting | TF-IDF | 2.000 → 500 (amostra) | 0,9260 | 1,3364 | 0,7333 | 0,3860 | 0,3839 | `docs/diferencas.md` §5.4 |
+| Regressão Logística | 58 features | 1.600 → 400 (amostra) | 1,0048 | 1,4082 | 0,7598 | 0,3656 | 0,3513 | `logistic_regression_rq1_holdout.json` |
 
-> Os holdouts de RF/XGB/GBT são recortes das amostras, não a base completa. O holdout da LR e do SVM usa a base completa. A AUC do baseline LR não foi registrada.
+> Os holdouts de RF/XGB/GBT/LR são recortes das amostras, não a base completa. O holdout da LR + TF-IDF e do SVM usa a base completa. A AUC do baseline LR não foi registrada.
 
 ### 10.3 Comparação com a Tabela 3 do artigo
 
 | Modelo | Artigo MAE | Artigo RMSE | Artigo AUC | Réplica comparável? |
 | --- | ---: | ---: | ---: | --- |
 | Gradient Boosting | 0,9612 ± 0,0061 | 1,3727 ± 0,0051 | 0,7318 ± 0,0058 | **Não**: só modo rápido |
-| Logistic Regression | 1,0149 ± 0,0043 | 1,4691 ± 0,0042 | 0,7328 ± 0,0064 | **Não**: a LR da réplica usa TF-IDF, não 58 features |
+| Logistic Regression | 1,0149 ± 0,0043 | 1,4691 ± 0,0042 | 0,7328 ± 0,0064 | **Não ainda**: modo rápido (amostra de 2.000, `docs/diferencas.md` §7); execução completa pendente — a LR da réplica que já é completa é a + TF-IDF (baseline) |
 | Random Forest | 0,9717 ± 0,0077 | 1,4001 ± 0,0087 | 0,7367 ± 0,0051 | **Não**: só amostra de 5.000 com 1 candidato |
 | XGBoost | 0,9499 ± 0,0047 | 1,3721 ± 0,0055 | 0,7390 ± 0,0046 | **Não**: só modo rápido |
 | SVM | 1,0431 ± 0,0070 | 1,5085 ± 0,0118 | 0,7304 ± 0,0046 | **Sim**: execução completa (1,0430 / 1,5085 / 0,7303) |
@@ -918,7 +920,7 @@ O IC da réplica é mais largo que o publicado no artigo, porque o artigo inclui
 Não é possível ranquear os cinco algoritmos do artigo com os dados atuais, porque só o SVM tem execução completa. O que se pode dizer:
 
 - No **mesmo split holdout oficial**, a LR + TF-IDF teve o menor MAE (0,6819), seguida de perto pelo SVM + TF-IDF (0,6830); o SVM com 58 features teve MAE 1,0476. Isso compara **representações**, não os algoritmos do artigo, e não foi testado estatisticamente. Entre os experimentos completos disponíveis, esses são o **melhor** (LR/SVM + TF-IDF, praticamente empatados) e o **pior** (SVM com 58 features) em MAE.
-- Nos experimentos rápidos/amostrais, o TF-IDF teve MAE menor que as 58 features em todos os modelos testados (RF, XGB, GBT), mas os treinos têm tamanhos diferentes e os resultados são indicativos.
+- Nos experimentos rápidos/amostrais, o TF-IDF teve MAE menor que as 58 features em todos os modelos testados (RF, XGB, GBT e LR amostral), mas os treinos têm tamanhos diferentes e os resultados são indicativos.
 - No artigo, o XGBoost é o melhor modelo; na réplica, essa conclusão **não foi verificada** porque o XGBoost só rodou em modo rápido. No protocolo completo de 58 features, não há ranking.
 
 ### 10.5 TF-IDF × 58 features
@@ -929,6 +931,7 @@ Não é possível ranquear os cinco algoritmos do artigo com os dados atuais, po
 | Random Forest | 1,1087 (amostra) | 0,8088 (amostra) | −0,2999 | Amostral, treinos diferentes |
 | XGBoost | 1,0508 (amostra) | 0,9420 (amostra) | −0,1088 | Modo rápido, treinos diferentes |
 | Gradient Boosting | 1,0726 (amostra) | 0,9260 (amostra) | −0,1466 | Modo rápido, treinos diferentes |
+| Regressão Logística | 1,0048 (amostra, holdout) | 0,6819 (completo) | −0,3229 | Modo rápido × baseline completo |
 
 **Leitura:** em todas as comparações disponíveis, o TF-IDF teve MAE menor. A diferença é grande no SVM completo (−0,36 estrela) e menor nos modos rápidos. Ressalvas: o TF-IDF remove 1 linha vazia por split; o SVM com 58 features usa hiperparâmetros buscados e o com TF-IDF usa parâmetros fixos; os modos rápidos usam amostras e treinos de tamanhos diferentes; não há teste estatístico. Portanto, a comparação é **indicativa**, não conclusiva. Ela também não mede o efeito das 58 features no protocolo do artigo com os demais modelos.
 
@@ -944,7 +947,7 @@ As duas representações capturam informações diferentes: o TF-IDF representa 
 | 4 | 41.172 | 10.293 | 1,0325 | 1,4911 | 0,3556 | 0,3786 | 0,7372 | 0,8073 |
 | 5 | 41.172 | 10.293 | 1,0476 | 1,5169 | 0,3543 | 0,3797 | 0,7289 | 0,7998 |
 
-Fonte: `results/metrics/svm_rq1_folds.csv`. O fold 4 é o melhor nas duas execuções (réplica e artigo). Os folds do Random Forest (amostra) estão em `results/metrics/random_forest_rq1_folds.csv`; os de XGBoost e Gradient Boosting, em `results/sample/` (não versionados).
+Fonte: `results/metrics/svm_rq1_folds.csv`. O fold 4 é o melhor nas duas execuções (réplica e artigo). Os folds do Random Forest (amostra) estão em `results/metrics/random_forest_rq1_folds.csv`; os da Regressão Logística (amostra de 2.000), em `results/metrics/logistic_regression_rq1_folds.csv`; os de XGBoost e Gradient Boosting, em `results/sample/` (não versionados).
 
 ### 10.7 Figuras
 
@@ -954,6 +957,7 @@ Fonte: `results/metrics/svm_rq1_folds.csv`. O fold 4 é o melhor nas duas execu�
 | `results/figures/confusion_matrix_logreg_validation.png` | LR na validação 80/20 |
 | `results/figures/confusion_matrix_svm.png` | SVM com 58 features (OOF dos 5 folds) |
 | `results/figures/confusion_matrix_random_forest.png` | RF com 58 features (amostra de 5.000) |
+| `results/figures/confusion_matrix_logistic_regression.png` | LR com 58 features (amostra de 2.000; OOF dos 5 folds) |
 
 As matrizes de XGBoost e Gradient Boosting existem apenas em `results/sample/figures/` e não são versionadas.
 
@@ -965,6 +969,8 @@ As matrizes de XGBoost e Gradient Boosting existem apenas em `results/sample/fig
 
 ![Matriz de confusão — Random Forest com as 58 features (amostra)](../results/figures/confusion_matrix_random_forest.png)
 
+![Matriz de confusão — Regressão Logística com as 58 features (amostra)](../results/figures/confusion_matrix_logistic_regression.png)
+
 ---
 
 ## 11. Experimentos adicionais
@@ -974,7 +980,7 @@ Os itens abaixo **não fazem parte do artigo** ou vão além do que ele descreve
 1. **Baseline TF-IDF + Regressão Logística** (`run_baseline.py`, `scripts/train_baseline.py`). O artigo cita TF-IDF e Bag of Words apenas como trabalho futuro. A réplica usa esse baseline como ponto de partida e referência interna.
 2. **Validação 80/20 do baseline** (`scripts/train_baseline_validation.py`). Separa 20% do treino para escolher/checar configurações sem tocar no teste oficial.
 3. **Estudo de normalização textual** (`scripts/compare_normalization.py`). Sete variantes, bootstrap pareado e decisão documentada. O artigo não descreve normalização.
-4. **Comparação TF-IDF × 58 features** para SVM, Random Forest, XGBoost e Gradient Boosting. O SVM tem comparação completa; os demais, comparações rápidas/amostrais.
+4. **Comparação TF-IDF × 58 features** para SVM, Random Forest, XGBoost, Gradient Boosting e Regressão Logística (amostral). O SVM tem comparação completa; os demais, comparações rápidas/amostrais.
 5. **Métricas adicionais**: acurácia e F1 macro, além de MAE, RMSE e AUC do artigo.
 6. **AUC por scores contínuos** (`auc_scores`) como diagnóstico, separada da AUC por predições binárias.
 7. **Holdout complementar** `train.csv` → `test.csv` no protocolo das 58 features.
@@ -1043,7 +1049,7 @@ O que **não** foi feito e continua pendente: PP2 (grupos de features), PP3 (abl
 
 **No artigo:** XGBoost teve as menores MAE/RMSE e a maior AUC; superou LR e SVM e não diferiu estatisticamente de GBT e RF.
 
-**Na réplica:** **parcialmente respondida**. Apenas o SVM foi executado no protocolo completo e reproduz a Tabela 3. Random Forest tem apenas amostra; XGBoost e Gradient Boosting têm apenas modo rápido; a LR com 58 features não foi executada. Portanto, a réplica **não pode afirmar** qual dos cinco algoritmos é o melhor no protocolo do artigo.
+**Na réplica:** **parcialmente respondida**. Apenas o SVM foi executado no protocolo completo e reproduz a Tabela 3. Random Forest tem apenas amostra; XGBoost, Gradient Boosting e Regressão Logística (58 features) têm apenas modo rápido. Portanto, a réplica **não pode afirmar** qual dos cinco algoritmos é o melhor no protocolo do artigo.
 
 O que os dados atuais permitem dizer:
 
@@ -1087,7 +1093,7 @@ O que os dados atuais permitem dizer:
 - **Random Forest:** apenas amostra de 5.000 linhas com 1 candidato; o grid de 19.440 combinações não foi executado.
 - **XGBoost:** apenas modo rápido (2.000 linhas, 20 candidatos); a execução completa foi interrompida por hardware.
 - **Gradient Boosting:** apenas modo rápido (2.000 linhas, 5 candidatos).
-- **LR com 58 features:** não executada.
+- **LR com 58 features:** apenas modo rápido (amostra de 2.000; Colab e local, seção 7 de `docs/diferencas.md`); a execução completa — a comparável à Tabela 3 — continua pendente.
 - **TF-IDF + RF/XGB/GBT:** apenas modo rápido/amostral; sem comparação com a LR na base completa.
 - **PP2, PP3 e PP4:** não executadas.
 - **Teste estatístico (Friedman/Nemenyi):** não realizado.
@@ -1097,6 +1103,7 @@ O que os dados atuais permitem dizer:
 - O SVM completo levou ≈7,6 h de busca + ≈16 min de avaliação em uma máquina com vários núcleos.
 - O XGBoost completo foi interrompido após ~40 min por restrição de hardware (notebook em uso, ventilação insuficiente).
 - O Gradient Boosting completo é caro: uma combinação pesada pode levar dezenas de minutos em 41 mil linhas.
+- A busca da LR completa dura ~2–2,5 h nas 2 vCPU do Colab free (o modo rápido amostral levou 29 min nas mesmas 2 vCPU; 91 s em 10 núcleos locais).
 - Os modos rápidos existem para viabilizar a entrega, mas não substituem o protocolo.
 
 ### 14.4 Ambiente e protocolo

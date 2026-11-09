@@ -1,0 +1,23 @@
+{
+  "model": "logistic_regression",
+  "protocol": "treino em train.csv, avaliação em test.csv, com os hiperparâmetros da busca",
+  "best_params": {
+    "solver": "newton-cg",
+    "random_state": null,
+    "max_iter": 10000,
+    "class_weight": null,
+    "C": 1
+  },
+  "sample_n": 2000,
+  "n_train": 1587,
+  "n_test": 413,
+  "metrics": {
+    "mae": 1.0048426150121066,
+    "rmse": 1.4082083821145317,
+    "f1_macro": 0.3513029924391401,
+    "accuracy": 0.36561743341404357,
+    "auc": 0.7597789115646258,
+    "auc_scores": 0.8362001943634597
+  },
+  "sklearn_version": "1.9.1"
+}

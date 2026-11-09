@@ -52,6 +52,7 @@ Desktop.ini
 *.log
 *.tmp
 *.temp
+*.pid
 .cache/
 
 # Datasets: mantenha apenas os marcadores dos diretórios
