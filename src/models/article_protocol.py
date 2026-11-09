@@ -406,7 +406,7 @@ def run_article_protocol(
 
     estimator = spec.build_estimator(seed)
     t1 = time.perf_counter()
-    outputs = joblib.Parallel(n_jobs=n_jobs)(
+    outputs = joblib.Parallel(n_jobs=n_jobs, verbose=verbose)(
         joblib.delayed(_fit_and_score)(estimator, best_params, X, y, tr, te) for tr, te in jobs
     )
     t_eval = time.perf_counter() - t1

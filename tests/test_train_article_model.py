@@ -87,6 +87,23 @@ def test_cli_xgboost_gera_os_artefatos(article_csvs, tmp_path):
         assert (out / nome).stat().st_size > 0
 
 
+def test_cli_logistic_regression_gera_os_artefatos(article_csvs, tmp_path):
+    train_csv, test_csv = article_csvs
+    out = tmp_path / "saida"
+    rc = train_article_model.main([
+        "--model", "logistic_regression", "--train", str(train_csv), "--test", str(test_csv),
+        "--n-iter", "2", "--n-jobs", "1", "--verbose", "10", "--output-dir", str(out),
+    ])
+    assert rc == 0
+    resumo = json.loads((out / "metrics" / "logistic_regression_rq1.json").read_text(encoding="utf-8"))
+    assert resumo["protocol"]["n_iter_requested"] == 2
+    assert resumo["data"]["n_rows"] == 320
+    assert resumo["article"]["best_params"]["solver"] == "lbfgs"   # referência do artigo registrada
+    for nome in ("metrics/logistic_regression_rq1_folds.csv", "metrics/logistic_regression_rq1_holdout.json",
+                 "figures/confusion_matrix_logistic_regression.png"):
+        assert (out / nome).stat().st_size > 0
+
+
 def test_cli_roda_como_script_pela_raiz(article_csvs, tmp_path):
     train_csv, test_csv = article_csvs
     rc = subprocess.run(

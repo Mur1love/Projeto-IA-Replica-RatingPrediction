@@ -68,6 +68,7 @@ results/figures/*
 !results/figures/confusion_matrix_svm.png
 !results/figures/confusion_matrix_xgboost.png
 !results/figures/confusion_matrix_gradient_boosting.png
+!results/figures/confusion_matrix_logistic_regression.png
 results/metrics/*
 !results/metrics/.gitkeep
 !results/metrics/baseline_logreg.json
@@ -86,6 +87,9 @@ results/metrics/*
 !results/metrics/gradient_boosting_rq1_folds.csv
 !results/metrics/gradient_boosting_rq1_holdout.json
 !results/metrics/gradient_boosting_tfidf.json
+!results/metrics/logistic_regression_rq1.json
+!results/metrics/logistic_regression_rq1_folds.csv
+!results/metrics/logistic_regression_rq1_holdout.json
 
 # Execuções rápidas (--sample-n) nunca são versionadas
 results/sample/

@@ -8,6 +8,13 @@ Exemplos (a partir da raiz do repositório)::
 Sem ``--output-dir``, a base completa grava em ``results/`` e o modo rápido
 (``--sample-n``) em ``results/sample/``, para nunca sobrescrever os resultados
 completos. Veja ``src/models/article_protocol.py`` para o protocolo.
+
+Para acompanhar progresso em log (tempo e % da busca/avaliação), use
+``--verbose 10`` e rode o monitor::
+
+    python scripts/train_article_model.py --model logistic_regression \
+        --verbose 10 > results/<log>.log 2>&1
+    python scripts/monitor_regressao_logistica.py --log results/<log>.log
 """
 from __future__ import annotations
 
@@ -31,6 +38,7 @@ from src.models.svm import SVM_SPEC  # noqa: E402
 from src.models.random_forest import RANDOM_FOREST_SPEC  # noqa: E402
 from src.models.xgboost import XGB_SPEC  # noqa: E402
 from src.models.gradient_boosting import GRADIENT_BOOSTING_SPEC  # noqa: E402
+from src.models.logistic_regression import LOGISTIC_REGRESSION_SPEC  # noqa: E402
 
 logger = logging.getLogger("train_article_model")
 
@@ -39,7 +47,8 @@ RAIZ = Path(__file__).resolve().parents[1]
 # TAREFAS 12 a 14 (e próximas): importe o ModelSpec do novo modelo e acrescente aqui.
 MODELS = {
     spec.name: spec
-    for spec in (SVM_SPEC, RANDOM_FOREST_SPEC, XGB_SPEC, GRADIENT_BOOSTING_SPEC)
+    for spec in (SVM_SPEC, RANDOM_FOREST_SPEC, XGB_SPEC, GRADIENT_BOOSTING_SPEC,
+                 LOGISTIC_REGRESSION_SPEC)
 }
 
 # Candidatos da busca no modo rápido (--sample-n). Modelos fora daqui usam o padrão (300):
@@ -66,6 +75,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="embaralha os folds (o artigo NÃO embaralha; fica registrado na saída)")
     p.add_argument("--n-jobs", type=int, default=-1,
                    help="processos paralelos (padrão: -1 = todos, como no artigo)")
+    p.add_argument("--verbose", type=int, default=0, metavar="N",
+                   help="verbosidade da busca/avaliação (use 10 para acompanhar por log)")
     return p
 
 
@@ -96,7 +107,7 @@ def main(argv: list[str] | None = None) -> int:
             warnings.filterwarnings("ignore", message="The total space of parameters")
             result = run_article_protocol(
                 spec, data, n_iter=n_iter, n_splits=args.n_splits, seed=args.seed,
-                shuffle=args.shuffle, n_jobs=args.n_jobs,
+                shuffle=args.shuffle, n_jobs=args.n_jobs, verbose=args.verbose,
             )
     except ValueError as exc:  # amostra pequena demais, colunas inesperadas etc.
         parser.error(str(exc))
