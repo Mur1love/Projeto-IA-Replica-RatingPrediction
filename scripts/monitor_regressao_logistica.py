@@ -1,42 +1,46 @@
-"""Monitor de execução do protocolo (RQ1): fase, %, tempo decorrido e tempo restante.
+"""Monitor de execução do protocolo (RQ1): fase, %, tempo decorrido e restante.
 
-Acompanha o log do ``train_article_model.py`` rodado com ``--verbose 11``::
+Acompanha o log do ``train_article_model.py`` rodado com ``--verbose 11`` e
+``PYTHONUNBUFFERED=1`` (sem isso, os workers loky bufferiam as marcas ``[CV]``::
 
-    # terminal 1 (a execução; pode ficar em background)
-    python scripts/train_article_model.py --model logistic_regression \
-        --verbose 11 > results/logistic_regression_run.log 2>&1
+    # lancar (do jeito usado nesta etapa; independente do terminal):
+    PYTHONUNBUFFERED=1 setsid nohup .venv/bin/python -u scripts/train_article_model.py \
+        --model logistic_regression --verbose 11 --n-jobs -1 \
+        > results/logistic_regression_run.log 2>&1 &
+    echo $! > results/logistic_regression_run.pid
 
-    # terminal 2 (o monitor; Ctrl-C encerra o monitor, não a execução)
+    # acompanhar (Ctrl-C encerra o monitor, nao a execucao):
     python scripts/monitor_regressao_logistica.py --log results/logistic_regression_run.log
 
 Usos extras:
 
-    python scripts/monitor_regressao_logistica.py --uma-vez      # foto única, sem loop
+    python scripts/monitor_regressao_logistica.py --uma-vez      # foto unica, sem loop
     python scripts/monitor_regressao_logistica.py --intervalo 5  # atualiza a cada 5 s
 
-O monitor informa, por fase:
+Por fase:
 
 1. ``dados``      — carregamento do CSV (linha ``Dados: ...``);
-2. ``busca``      — ``RandomizedSearchCV``: barra com o % de ajustes concluídos
-   (contadores ``Done N tasks`` do joblib), ritmo em fits/min, tempo decorrido
-   e ETA; enquanto nenhum lote conclui (antes da 1ª marca ``Done``), avisa que o
-   primeiro lote está em execução;
-3. ``avaliacao``  — 5 folds + holdout com os melhores hiperparâmetros (o contador
-   do joblib reinicia a partir de 1);
-4. ``concluido``  — métricas resumidas e caminhos dos artefatos (``summary -> ...``).
+2. ``busca``      — cada fit concluido imprime ``[CV k/5; i/50] END ... total
+   time=Xs``; o monitor conta os ENDs, mostra %, ritmo e ETA (tempo medio de
+   fit medido x workers); antes do primeiro END, avisa que nenhum lote acabou;
+3. ``avaliacao``  — 5 folds + holdout com os melhores hiperparametros; esse
+   ``Parallel`` e do joblib puro e imprime ``Done N tasks | elapsed: ...``;
+4. ``concluido``  — metricas e caminhos dos artefatos (``summary -> ...``).
 
-Tempo: o ``elapsed`` impresso pelo joblib é exato de dentro da fase; entre uma
-linha e outra o monitor projeta ``elapsed + (agora − última escrita no log)``.
-Antes da 1ª marca ``Done`` não há relógio do joblib; só o do monitor.
+Tempo: o sklearn verbose nao imprime o ``elapsed`` do joblib durante a busca;
+o decorrido e ancorado na ``Fitting N folds...`` vista pelo monitor (acurado
+quando o monitor acompanha desde o inicio ``≈`` se entrar no meio). O ``total
+time=`` de cada END alimenta o ETA. MAE/RMSE/AUC e holdout vm só ao final.
 
-Denominadores da LR: ``min(n_iter, 50) ≈ 50`` candidatos × 5 folds = 250 fits na
-busca e ``5 folds + 1 holdout = 6`` fits na avaliação (total do protocolo: 256).
-``--candidatos``, ``--n-iter``, ``--n-splits`` e ``--sem-holdout`` ajustam para
-outras execuções.
+Denominadores da LR: ``min(n_iter, 50) ≈ 50`` candidatos × 5 folds = 250 fits
+na busca e ``5 folds + 1 holdout = 6`` na avaliacao (protocolo: 256 fits).
+``--candidatos``, ``--n-iter``, ``--n-splits``, ``--workers`` e ``--sem-holdout``
+ajustam outras execucoes.
 """
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 import time
@@ -45,10 +49,13 @@ from pathlib import Path
 
 N_CANDIDATOS_LR = 50  # grid do artigo: 5 C × 5 solver × 2 class_weight
 
-_TAREFAS = re.compile(r"Done\s+(\d+)\s+tasks")
-_DE = re.compile(r"Done\s+(\d+)\s+(?:of|out of)\s+(\d+)")
-_DECURRIDO = re.compile(r"elapsed:\s*([\d:]+\.?\d*)s?")
-_BUSCA_INICIADA = re.compile(r"Fitting\s+\d+\s+folds for each of")
+# "[CV 3/5; 1/50] END .... score=... total time=   5.3s" (sklearn, busca)
+# (>1 min aparece como "total time=  1.2min")
+_CV_END = re.compile(r"\[CV\s+\d+/\d+;\s*\d+/\d+\]\s*END.*?total time=\s*([\d.]+)(s|min)")
+# "Parallel(n_jobs=-1): Done 3 tasks | elapsed: 0:00:07" (joblib puro, avaliação)
+_DONE = re.compile(r"Done\s+(\d+)\s+tasks|Done\s+(\d+)\s+(?:of|out of)\s+(\d+)")
+_ELAPSED = re.compile(r"elapsed:\s*([\d:]+\.?\d*)s?")
+_FITTING = re.compile(r"Fitting\s+\d+\s+folds for each of")
 _FIM_RESUMO = re.compile(r"summary\s+->\s+\S+")
 _METRICA = re.compile(r"\s*(MAE|RMSE|AUC)\s+\d")
 
@@ -57,19 +64,25 @@ _METRICA = re.compile(r"\s*(MAE|RMSE|AUC)\s+\d")
 class Estado:
     """O que o log informa em um instante, já traduzido para progresso."""
 
-    fase: str = "aguardando"           # aguardando|dados|busca|avaliacao|concluido
-    busca_iniciada: bool = False       # True após a linha "Fitting N folds..."
+    fase: str = "aguardando"                # aguardando|dados|busca|avaliacao|concluido
+    busca_iniciada: bool = False            # True após a linha "Fitting N folds..."
     feitos_busca: int = 0
     feitos_avaliacao: int = 0
-    tempo_busca_s: float | None = None       # ultimo elapsed do joblib na busca
-    tempo_avaliacao_s: float | None = None   # ultimo elapsed do joblib na avaliação
+    tempos_fit_s: list[float] = field(default_factory=list)  # "total time=" por fit
+    tempo_avaliacao_s: float | None = None  # elapsed do joblib na avaliação
     dados: str | None = None
-    resultados: list[str] = field(default_factory=list)   # linhas finais métricas/artefatos
+    resultados: list[str] = field(default_factory=list)      # métricas/arte­fatos finais
+
+    @property
+    def tempo_medio_fit_s(self) -> float:
+        return sum(self.tempos_fit_s) / len(self.tempos_fit_s) if self.tempos_fit_s else 0.0
 
 
 def _segundos(texto: str) -> float:
     """``0.7s``/``0.7``/``0:00:15`` -> segundos."""
-    texto = texto.strip().removesuffix("s")
+    texto = texto.strip()
+    if texto.endswith("s"):
+        texto = texto[:-1]
     if ":" in texto:
         h, m, s = texto.split(":")
         return int(h) * 3600 + int(m) * 60 + float(s)
@@ -79,47 +92,49 @@ def _segundos(texto: str) -> float:
 def interpretar_log(linhas: list[str], total_busca: int, total_avaliacao: int) -> Estado:
     """Converte as linhas do log em :class:`Estado`.
 
-    O contador do joblib cresce na busca (até ``total_busca``) e reinicia na
-    avaliação; cada queda marca o início da avaliação. Métricas e caminhos de
-    artefatos aparecem só no fim e são devolvidos em ``resultados``.
+    Na busca, cada fit concluído gera uma marca ``[CV ...] END`` — elas são
+    contadas em ``feitos_busca`` e o ``total time=`` de cada uma entra em
+    ``tempos_fit_s``. A fase de avaliação começa quando há ``total_busca`` ENDs
+    (ou quando o contador do joblib reinicia); o ``Done N tasks | elapsed:``
+    da avaliação acumula em ``feitos_avaliacao`` e ``tempo_avaliacao_s``.
+    Métricas e caminhos de artefatos só aparecem no fim, em ``resultados``.
     """
     estado = Estado()
-    fase_busca = True  # True = contadores ativos são da busca
-    for linha in linhas:
-        linha = linha.rstrip()
+    in_busca = True  # enquanto True, contadores ativos são da busca
+    for bruta in linhas:
+        linha = bruta.rstrip()
         if not linha:
             continue
 
         if "Dados:" in linha and "features" in linha:
             estado.dados = linha.strip()
-            estado.fase = "dados"
+            if estado.fase == "aguardando":
+                estado.fase = "dados"
 
-        if _BUSCA_INICIADA.search(linha):
+        if _FITTING.search(linha):
             estado.busca_iniciada = True
             if not estado.resultados:
-                estado.fase = "busca"
+                estado.fase = "busca"  # a linha Fitting vem depois de Dados
 
-        bate = _TAREFAS.search(linha) or _DE.search(linha)
+        fim_cv = _CV_END.search(linha)
+        if fim_cv and in_busca:
+            valor = float(fim_cv.group(1)) * (60.0 if fim_cv.group(2) == "min" else 1.0)
+            estado.tempos_fit_s.append(valor)
+            estado.feitos_busca = min(estado.feitos_busca + 1, total_busca)
+            estado.fase = "busca"
+            continue
+
+        bate = _DONE.search(linha)
         if bate:
-            feitos = int(bate.group(1))
-            if fase_busca and feitos < estado.feitos_busca:
-                fase_busca = False  # o contador reiniciou: avaliação
-            if fase_busca:
-                estado.feitos_busca = min(max(estado.feitos_busca, feitos), total_busca)
-                estado.fase = "busca"
-                tempo = _DECURRIDO.search(linha)
-                if tempo:
-                    estado.tempo_busca_s = max(
-                        estado.tempo_busca_s or 0.0, _segundos(tempo.group(1))
-                    )
-            else:
-                estado.feitos_avaliacao = max(estado.feitos_avaliacao, feitos)
-                estado.fase = "avaliacao"
-                tempo = _DECURRIDO.search(linha)
-                if tempo:
-                    estado.tempo_avaliacao_s = max(
-                        estado.tempo_avaliacao_s or 0.0, _segundos(tempo.group(1))
-                    )
+            feitos = int(bate.group(2) or bate.group(1))
+            in_busca = False  # a busca (verbose sklearn) não emite Done: essas linhas são da avaliação
+            estado.feitos_avaliacao = max(estado.feitos_avaliacao, min(feitos, total_avaliacao))
+            estado.fase = "avaliacao"
+            tempo = _ELAPSED.search(linha)
+            if tempo:
+                estado.tempo_avaliacao_s = max(
+                    estado.tempo_avaliacao_s or 0.0, _segundos(tempo.group(1))
+                )
             continue
 
         if "Candidatos avaliados:" in linha or "Holdout (" in linha or _FIM_RESUMO.search(linha):
@@ -137,7 +152,7 @@ def interpretar_log(linhas: list[str], total_busca: int, total_avaliacao: int) -
     return estado
 
 
-# --- apresentação ----------------------------------------------------------
+# --- apresentação -----------------------------------------------------------
 def _pct(parte: int, total: int) -> float:
     return max(0.0, min(100.0, 100.0 * parte / float(total))) if total else 0.0
 
@@ -148,7 +163,7 @@ def _hhmmss(segundos: float) -> str:
 
 
 def _num(valor: float) -> str:
-    """Número decimal com vírgula (convencional em pt-BR), 1 casa."""
+    """Decimal com vírgula (pt-BR), 1 casa."""
     return f"{valor:.1f}".replace(".", ",")
 
 
@@ -157,25 +172,13 @@ def _bar(pct: float, largura: int = 24) -> str:
     return "█" * cheio + "░" * max(0, largura - cheio)
 
 
-def _decorrido_fase(estado: Estado, agora: float, log_mtime: float | None) -> str:
-    """Tempo decorrido da fase: joblib elapsed projetado até agora."""
-    elapsed = (
-        estado.tempo_busca_s if estado.fase == "busca" else
-        estado.tempo_avaliacao_s if estado.fase == "avaliacao" else None
-    )
-    if elapsed is None:
-        return ""
-    delta = max(0.0, agora - log_mtime) if log_mtime is not None else 0.0
-    return _hhmmss(elapsed + delta)
-
-
 def render(estado: Estado, total_busca: int, total_avaliacao: int, log: str,
-           *, monitor_s: float = 0.0, agora: float | None = None,
-           log_mtime: float | None = None) -> str:
-    """Bloco de 1–2 linhas com fase, %, tempo decorrido e tempo restante estimado."""
+           *, monitor_s: float = 0.0, busca_ancora_s: float | None = None,
+           workers: int = 1) -> str:
+    """Bloco de 1–2 linhas com fase, %, tempo decorrido e tempo restante."""
     total_protocolo = total_busca + total_avaliacao
-    feitos_protocolo = estado.feitos_busca + estado.feitos_avaliacao
-    pct_protocolo = _pct(feitos_protocolo, total_protocolo)
+    pct_protocolo = _pct(estado.feitos_busca + estado.feitos_avaliacao, total_protocolo)
+    medio = estado.tempo_medio_fit_s
 
     if estado.fase == "aguardando":
         return f"aguardando o log em '{log}'... (monitor há {_hhmmss(monitor_s)})"
@@ -184,39 +187,36 @@ def render(estado: Estado, total_busca: int, total_avaliacao: int, log: str,
 
     if estado.fase == "busca":
         pct_busca = _pct(estado.feitos_busca, total_busca)
-        cabeca = (
-            f"fase de busca de hiperparâmetros | {pct_busca:4.1f}% {_bar(pct_busca)} "
-            f"({estado.feitos_busca}/{total_busca} fits, protocolo {pct_protocolo:.1f}%)"
-        )
-        decorrido = _decorrido_fase(estado, agora or 0.0, log_mtime)
+        cabeca = (f"fase de busca de hiperparâmetros | {pct_busca:5.1f}% {_bar(pct_busca)} "
+                  f"({estado.feitos_busca}/{total_busca} fits, protocolo {pct_protocolo:.1f}%)")
+        decorrido = f"busca há ≈{_hhmmss(busca_ancora_s or 0)}" if busca_ancora_s else ""
         if not estado.feitos_busca:
-            return (f"{cabeca}\n  {('_≈' + decorrido + ' | ') if decorrido else ''}"
-                    f"primeiro lote de fits em execução — o joblib só imprime uma "
-                    f"marca quando um item do lote termina; nada a mostrar ainda")
-        restante_busca = total_busca - estado.feitos_busca
-        taxa = estado.feitos_busca / (estado.tempo_busca_s or 0.0)
-        eta_busca = _hhmmss(restante_busca / taxa)
-        # estimativa da avaliação: mesmo ritmo por fit (aproximação honesta)
-        eta_total = _hhmmss(restante_busca / taxa + total_avaliacao / taxa)
-        return (f"{cabeca}\n  {decorrido + ' | ' if decorrido else ''}"
-                f"ritmo {_num(taxa * 60)} fits/min | resta: {eta_busca} (busca) | "
-                f"ETA protocolo ≈ {eta_total}")
+            return (f"{cabeca}\n  {decorrido + ' | ' if decorrido else ''}"
+                    f"nenhum fit concluído ainda — os 250 fits estão distribuídos "
+                    f"nos workers; a primeira marca END abrira o ETA")
+        resta_busca = (total_busca - estado.feitos_busca) * medio / workers
+        eta_total = resta_busca + total_avaliacao * medio / workers
+        ritmo = (estado.feitos_busca / (busca_ancora_s or 0.0) * 60) if busca_ancora_s else 0.0
+        detalhe = (
+            f"  {decorrido + ' | ' if decorrido else ''}"
+            f"ritmo {_num(ritmo)} fits/min | fit médio {_num(medio)} s | "
+            f"resta: {_hhmmss(resta_busca)} (busca) | ETA protocolo ≈ {_hhmmss(eta_total)}"
+        )
+        return f"{cabeca}\n{detalhe}"
 
     if estado.fase == "avaliacao":
         pct_aval = _pct(estado.feitos_avaliacao, total_avaliacao)
-        decorrido = _decorrido_fase(estado, agora or 0.0, log_mtime)
-        eta_aval = 0.0
-        if estado.feitos_avaliacao and estado.tempo_avaliacao_s:
-            taxa_aval = estado.feitos_avaliacao / estado.tempo_avaliacao_s
-            eta_aval = (total_avaliacao - estado.feitos_avaliacao) / taxa_aval
-        return (f"fase de avaliação (5 folds + holdout) | {pct_aval:4.1f}% {_bar(pct_aval)} "
+        resta_aval = (total_avaliacao - estado.feitos_avaliacao) * medio / workers
+        decorrido = (f"avaliação há {_hhmmss(estado.tempo_avaliacao_s)}"
+                     if estado.tempo_avaliacao_s else "")
+        return (f"fase de avaliação (folds + holdout) | {pct_aval:5.1f}% {_bar(pct_aval)} "
                 f"({estado.feitos_avaliacao}/{total_avaliacao} fits)\n  "
-                f"{decorrido + ' | ' if decorrido else ''}"
-                f"busca 100% | protocolo {pct_protocolo:.1f}% | resta ≈ {_hhmmss(eta_aval)}")
+                f"{decorrido + ' | ' if decorrido else ''}busca 100% | "
+                f"protocolo {pct_protocolo:.1f}% | resta ≈ {_hhmmss(resta_aval)}")
 
-    fim = (estado.tempo_busca_s or 0) + (estado.tempo_avaliacao_s or 0)
+    fim = (busca_ancora_s or 0) + (estado.tempo_avaliacao_s or 0)
     return (f"concluído — 100% do protocolo | total ≈ {_hhmmss(fim)} "
-            f"(busca {_hhmmss(estado.tempo_busca_s or 0)} + avaliação "
+            f"(busca {_hhmmss(busca_ancora_s or 0)} + avaliação "
             f"{_hhmmss(estado.tempo_avaliacao_s or 0)})")
 
 
@@ -230,6 +230,8 @@ def principal(argv: list[str] | None = None) -> int:
     p.add_argument("--candidatos", type=int, default=None,
                    help=f"candidatos realmente avaliados (padrão {N_CANDIDATOS_LR} na LR)")
     p.add_argument("--n-splits", type=int, default=5, help="folds usados na execução (padrão 5)")
+    p.add_argument("--workers", type=int, default=0,
+                   help="núcleos paralelos para o ETA (0 = os.cpu_count())")
     p.add_argument("--sem-holdout", action="store_true",
                    help="a execução não tem holdout (ex.: dados de um único arquivo)")
     p.add_argument("--intervalo", type=float, default=2.0, help="segundos entre leituras (loop)")
@@ -240,26 +242,29 @@ def principal(argv: list[str] | None = None) -> int:
     candidatos = args.candidatos or min(args.n_iter, N_CANDIDATOS_LR)
     total_busca = candidatos * args.n_splits
     total_avaliacao = args.n_splits + (0 if args.sem_holdout else 1)
+    workers = args.workers or (os.cpu_count() or 1)
     inicio_monitor = time.monotonic()
+    busca_ancora: float | None = None  # tempo decorrido da busca segundo o monitor
     ansi = sys.stdout.isatty()
 
     try:
         while True:
-            agora = time.time()
-            monitor_s = time.monotonic() - inicio_monitor
+            agora = time.monotonic()
+            monitor_s = agora - inicio_monitor
             if args.log.is_file():
                 linhas = args.log.read_text(encoding="utf-8", errors="replace").splitlines()
                 estado = interpretar_log(linhas, total_busca, total_avaliacao)
-                linha = render(
-                    estado, total_busca, total_avaliacao, str(args.log),
-                    monitor_s=monitor_s, agora=agora,
-                    log_mtime=args.log.stat().st_mtime,
-                )
+                if estado.busca_iniciada and busca_ancora is None:
+                    busca_ancora = monitor_s  # âncora da busca (desde o monitor)
             else:
-                estado = Estado()
-                linha = render(estado, total_busca, total_avaliacao, str(args.log),
-                               monitor_s=monitor_s)
+                estado = Estado()  # --log ainda não existe
 
+            linha = render(
+                estado, total_busca, total_avaliacao, str(args.log),
+                monitor_s=monitor_s,
+                busca_ancora_s=(agora - inicio_monitor) if (estado.busca_iniciada and busca_ancora is not None) else None,
+                workers=workers,
+            )
             if ansi:
                 print("\033[2J\033[H" + linha, flush=True)
             else:
